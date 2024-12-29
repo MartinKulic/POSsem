@@ -6,8 +6,39 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <stdatomic.h>
+#include <pthread.h>
+#include <signal.h>
+#include "server.h"
 
-#define PORT 8080
+typedef struct in_data
+{
+  int socket;
+  atomic_bool work;
+  char* input_buffer;
+}in_data;
+
+void * in_task(void * arg){
+  in_data * this = arg;
+  //while(this->work)
+ // {
+    char buffer[1024] = {0};
+    ssize_t valred = read(this->socket, buffer, 1024-1);
+    if (valred == 0){
+      //break;
+    }
+    //printf("S-valred: %d\n", valred);
+
+    *this->input_buffer = buffer[0];
+    printf("V buffery: %c z %d\n", *this->input_buffer, this->socket);
+
+  //}
+
+  printf("%d ending, work = %d\n", this->socket, this->work);
+  close(this->socket);
+}
+
+//---------------------------------------
 
 int main (int argc, char *argv[])
 {
@@ -16,8 +47,7 @@ int main (int argc, char *argv[])
   struct sockaddr_in address;
   int opt =1;
   socklen_t addrlen = sizeof(address);
-  char buffer[1024] = {0};
-  
+    
   //socket file descriptor
   if ( (server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
   {
@@ -48,23 +78,55 @@ int main (int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
 
-  if ( (new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0)
+  pthread_t * threads = calloc(5, sizeof(pthread_t));
+  char inputs[5] = {'p'};
+  in_data * i_data[5];
+  //send(client_fd, "hello is tam", 13,0);
+  int lst = 0; // conter for i_data array;
+  //while(work)
+  for (int i = 1; i<4; i++)
   {
-    perror("accept failed");
-    exit(EXIT_FAILURE);
-  }
-  valred = read(new_socket, buffer, 1024-1);
-  printf("S-prijal: %s\n", buffer);
+    int new_socket;
+    if ( (new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0)
+    {
+      perror("accept failed");
+      exit(EXIT_FAILURE);
+    }
+    printf("new connectien %d\n", new_socket);
+  
+    // new thread for player
+    in_data* newData = calloc(1, sizeof(in_data));
+    newData->socket = new_socket;
+    newData->work = 1;
+    newData->input_buffer = &inputs[lst];
 
-  for(int i = 0; i < 5; i++)
+    i_data[lst] = newData;
+
+    pthread_create(&threads[lst], NULL, in_task, newData);
+
+    lst++;
+
+    }
+
+  
+
+  for(int i = 0; i < lst; i++)
   {
-    char serverMessage[100] = {0};
-    scanf("%s", &serverMessage);
-    send(new_socket, serverMessage, strlen(serverMessage), 0);
+    printf("joinding\n");
+   // close(i_data[i]->socket);
+   // printf("socket %d closed\n", i_data[i]->socket);
+    //pthread_kill(threads[i], 1);
+    pthread_join(threads[i], NULL);
+    printf("joinded\n");
+    free(i_data[i]);
+  }
+  for (int i = 0; i < lst; i++)
+  {
+  //  i_data[i]->work = 0;
+    printf("%d - %c\n", i, inputs[i]);
   }
 
-  //close connected socket
-  close(new_socket);
+  free(threads);
   //close listenong socket
   close(server_fd);
 
