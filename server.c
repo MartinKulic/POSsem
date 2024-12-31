@@ -28,8 +28,8 @@ void in_task_init(in_data* this, int socket, char* buff)
 }
 void * in_task(void * arg){
   in_data * this = arg;
-  //while(this->work)
-  for (int i = 0; i<5; i++) // yatial ma hrac 5 tahov
+  while(this->work)
+  //for (int i = 0; i<5; i++) // yatial ma hrac 5 tahov
   {
     char buffer[1024] = {0};
     ssize_t valred = read(this->socket, buffer, 1024-1);
