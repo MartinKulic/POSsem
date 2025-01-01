@@ -12,11 +12,10 @@
 #include <termios.h>
 #include <poll.h>
 
+#include "client.h"
+
 #define PORT 8080
 
-typedef struct input_data{
-
-}input_data;
 // 1 ak prebehne uspesne 
 int connect_to_server (int * client_fd)
 {
@@ -51,8 +50,10 @@ int connect_to_server (int * client_fd)
   return 1;
   
 }
-void * communication_task(int client_fd)
+void * communication_task(void * arg)
 {
+  struct communication_data* this = arg;
+
   struct termios oldt, newt;
   tcgetattr(0, &oldt);
   memcpy(&newt, &oldt, sizeof(struct termios));
@@ -64,69 +65,92 @@ void * communication_task(int client_fd)
   tcsetattr(0, TCSANOW, &newt);
   //cfmakeraw();
 
-  struct pollfd fds[1];
-  fds[0].fd = STDIN_FILENO;
-  fds[0].events = POLLIN;
+  this->fds[0].fd = STDIN_FILENO;
+  this->fds[0].events = POLLIN;
 
-  char ch[3];
-  while(1)
+  this->fds[1].fd = this->client_fd;
+  this->fds[1].events = POLLIN;
+
+  
+  while(this->work)
   {
    // printf("enter command: ");
  
     printf("bfr poll\n");
-    if (poll(fds,1,900)>0)
+    if (poll(this->fds,1,900)>0)
     {
-      if (fds[0].revents & POLLIN)
+      if (this->fds[0].revents & POLLIN)
       {
-        read(fds[0].fd, &ch[0], 1);
-        printf("%d   ", ch[0]);
-        if(ch[0]=='\033')
-        {
-          if(poll(fds, 1, 5)>0)
-          {
-            read(fds[0].fd, &ch[1], 1);
-            if(ch[1]=='[')
-            {
-              char toSend[1];
-              if(poll(fds, 1, 5)>0)
-              {
-                read(fds[0].fd, &ch[2], 1);
-                switch(ch[2])
-                {
-                  case 'A':
-                    toSend[0] = 'A';
-                    break;
-                  case 'B':
-                    toSend[0] = 'V';
-                    break;
-                  case 'C':
-                    toSend[0]= '>';
-                    break;
-                  case 'D':
-                    toSend[0]='<';
-                    break;
-                }// 3. char
-                printf("%c\n", toSend[0]);
-                send(client_fd, toSend, 1, 0);
-              }// je 3. char
-            }// 2. char je [
-          }// je 2. char
-          else // nie je 2. char
-          {
-            printf("esc\n");
-            send(client_fd, "q", 1, 0);
-            break;
-          }
-        }// 1. char je 27 - \033
+        com_in_task(this);
       }// je 1. char na citanie v fd
-    }// ne 0 fd je ready
+      if (this->fds[0].revents & POLLIN)
+      {
+        com_out_task(this);
+      }
+
+    }// je 0 fd je ready
     
     
   }
   tcsetattr(0, TCSANOW, &oldt); 
-  close(client_fd);
+  close(this->client_fd);
   return NULL;
 }
+
+//Recievs data from server responds to them if needed
+void com_out_task(struct communication_data* data)
+{
+  ;
+}
+
+//Manages input from user end send them to server
+void com_in_task(struct communication_data* data)
+{
+  char ch[3];
+  
+  read(data->fds[0].fd, &ch[0], 1);
+  printf("%d   ", ch[0]);
+  if(ch[0]=='\033')
+  {
+    if(poll(data->fds, 1, 5)>0)
+    {
+      read(data->fds[0].fd, &ch[1], 1);
+      if(ch[1]=='[')
+      {
+        char toSend[1];
+        if(poll(data->fds, 1, 5)>0)
+        {
+          read(data->fds[0].fd, &ch[2], 1);
+          switch(ch[2])
+          {
+            case 'A':
+              toSend[0] = 'A';
+              break;
+            case 'B':
+              toSend[0] = 'V';
+              break;
+            case 'C':
+              toSend[0]= '>';
+              break;
+            case 'D':
+              toSend[0]='<';
+              break;
+          }// 3. char
+          printf("%c\n", toSend[0]);
+          send(data->client_fd, toSend, 1, 0);
+        }// je 3. char
+      }// 2. char je [
+    }// je 2. char
+    else // nie je 2. char
+    {
+      printf("esc\n");
+      send(data->client_fd, "q", 1, 0);
+      data->work = 0;
+    }
+  }// 1. char je 27 - \033
+}
+
+//--------------------------------------------
 
 int main (int argc, char* argv[])
 {
@@ -135,7 +159,11 @@ int main (int argc, char* argv[])
   {
     return 2;
   }
-  communication_task(client_fd);  
+  struct communication_data * cd = calloc(1, sizeof(struct communication_data));
+  cd->work = 1;
+  cd->client_fd = client_fd;
+  communication_task(cd);  
 
+  free(cd);
   return 0;
 }
