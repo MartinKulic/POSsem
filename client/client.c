@@ -17,7 +17,7 @@
 #define PORT 8080
 
 // 1 ak prebehne uspesne 
-int connect_to_server (int * client_fd)
+int connect_to_server (int * client_fd, int* uniqe_identifier)
 {
 //input_data* this = argv;
   int status;
@@ -45,8 +45,13 @@ int connect_to_server (int * client_fd)
     printf("Connection fail\n");
     return 0;
   }
-
   printf("connected\n");
+  /*int ident_but_net = htonl(*uniqe_identifier);
+  send(*client_fd,(char*)&ident_but_net, 4, 0);
+  
+  recv(*client_fd, &ident_but_net, 4, 0);
+  *uniqe_identifier = ntohl(ident_but_net);
+  printf(" uniqe_identifier: %c %d\n", *uniqe_identifier, *uniqe_identifier);*/
   return 1;
   
 }
@@ -81,12 +86,12 @@ void * communication_task(void * arg)
     {
       if (this->fds[0].revents & POLLIN)
       {
-        com_in_task(this);
-      }// je 1. char na citanie v fd
-      if (this->fds[0].revents & POLLIN)
-      {
         com_out_task(this);
-      }
+      }// je 1. char na citanie v fd
+      if (this->fds[1].revents & POLLIN)
+      {
+        com_in_task(this);
+      }// prislo nieco zo servera
 
     }// je 0 fd je ready
     
@@ -98,13 +103,13 @@ void * communication_task(void * arg)
 }
 
 //Recievs data from server responds to them if needed
-void com_out_task(struct communication_data* data)
+void com_in_task(struct communication_data* data)
 {
   ;
 }
 
 //Manages input from user end send them to server
-void com_in_task(struct communication_data* data)
+void com_out_task(struct communication_data* data)
 {
   char ch[3];
   
@@ -154,16 +159,20 @@ void com_in_task(struct communication_data* data)
 
 int main (int argc, char* argv[])
 {
-  int client_fd = 0;
-  if (connect_to_server(&client_fd) != 1)
-  {
-    return 2;
-  }
   struct communication_data * cd = calloc(1, sizeof(struct communication_data));
-  cd->work = 1;
-  cd->client_fd = client_fd;
-  communication_task(cd);  
+  cd->uniqe_identifier = 0;
 
+  printf("odpojeny e exit other reconect\n");
+  while(getchar()!='e')
+  {
+    if (connect_to_server(&cd->client_fd, &cd->uniqe_identifier) != 1)
+    {
+      return 2;
+    }
+    cd->work = 1;
+    communication_task(cd); 
+    printf("odpojeny esc exit other reconect\n");
+  }
   free(cd);
   return 0;
 }
