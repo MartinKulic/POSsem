@@ -13,6 +13,7 @@
 #include <poll.h>
 
 #include "client.h"
+#include "../share/com_protocol.h"
 
 #define PORT 8080
 
@@ -45,7 +46,15 @@ int connect_to_server (int * client_fd, int* uniqe_identifier)
     printf("Connection fail\n");
     return 0;
   }
-  printf("connected\n");
+  printf("connected %d %d\n", *client_fd, status);
+  char buff[STD_TRANSFER_LEN] = {0};
+  my_recv(*client_fd, &buff[0]);
+  printf("%s\n", buff);
+
+  if(strcmp("Plno", buff)==0){
+    return 0;
+  }
+
   /*int ident_but_net = htonl(*uniqe_identifier);
   send(*client_fd,(char*)&ident_but_net, 4, 0);
   
@@ -75,15 +84,16 @@ void * communication_task(void * arg)
 
   this->fds[1].fd = this->client_fd;
   this->fds[1].events = POLLIN;
+  
 
   
   while(this->work)
   {
    // printf("enter command: ");
  
-    printf("bfr poll\n");
-    if (poll(this->fds,1,900)>0)
+    if (poll(this->fds,2,900)>0)
     {
+      printf("bfr poll\n");
       if (this->fds[0].revents & POLLIN)
       {
         com_out_task(this);
@@ -105,7 +115,10 @@ void * communication_task(void * arg)
 //Recievs data from server responds to them if needed
 void com_in_task(struct communication_data* data)
 {
-  ;
+  char buff[STD_TRANSFER_LEN];
+  printf("incoming t: ");
+  my_recv(data->client_fd, &buff[0]);
+  printf("%s\n", buff);
 }
 
 //Manages input from user end send them to server

@@ -6,6 +6,8 @@ project(
   LANGUAGES C
 )
 
+
+add_subdirectory(libsll)
+add_subdirectory(share)
 add_subdirectory(server)
 add_subdirectory(client)
-add_subdirectory(libsll)

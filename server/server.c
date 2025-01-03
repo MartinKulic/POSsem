@@ -3,8 +3,11 @@
 #include <sys/poll.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <string.h>
 
 #include "server.h"
+#include "../share/com_protocol.h"
 
 int server_init(struct server* this, int port)
 {
@@ -53,8 +56,8 @@ void * server_connect_players(void * arg)
   struct pollfd fds[1];
   fds[0].fd = this->server_fd;
   fds[0].events = POLLIN;
-  //while(this->work)
-  for (int i = 0 ; i < 5; i++)
+  while(this->work)
+  //for (int i = 0 ; i < 5; i++)
   {
     if(poll(fds, 1, 950)>0)
     {
@@ -74,7 +77,18 @@ void * server_connect_players(void * arg)
           printf("failed to make new socket\n");
           continue;
         }
-        printf("Novy hrac %d a %p\n", new_player->fd, new_player);
+        if(sll_get_size(this->players) > this->MAX_PLAYERS)
+        {
+          printf("novy hrac ale je plno\n");
+          char * msg = "Plno";
+          my_send(new_player->fd, msg);
+       //   int conv_next_msg_size = htonl(strlen(msg));
+       //   send(new_player->fd, &conv_next_msg_size, sizeof(conv_next_msg_size), 0);
+       //   send(new_player->fd, msg, strlen(msg), 0);
+          close(new_player->fd);
+          continue;
+        }
+        printf("Novy hrac %d\n", new_player->fd);
         struct ser_pla* sp = calloc(1, sizeof(ser_pla));//{new_player, this};
         sp->player = new_player; //uvolni sa v player_init_a_dispache
         sp->server = this;
@@ -104,27 +118,113 @@ void * player_init_a_dispache(void * arg)
   
   pthread_mutex_init(&player->mut_action, NULL);
   player->id = player->fd;
-  printf("new player %p created\n", player);
-}
-void player_task()
-{
+  printf("new player %d created\n", player->id);
 
+  //char * msg = "OK";
+  my_send(player->fd, "OK");
+//  int conv_next_msg_size = htonl(strlen(msg));
+//  send(player->fd, &conv_next_msg_size, sizeof(conv_next_msg_size), 0);
+//  send(player->fd, msg, strlen(msg), 0);
+  player->work = 1;
+
+  player_in_task(player);
+}
+void player_in_task(struct player * this)
+{
+  struct pollfd fds[1];
+  fds[0].fd = this->fd;
+  fds[0].events = POLLIN;
+
+  while(this->work)
+  {
+    if(poll(fds, 1, 1000) > 0)
+    {
+      printf("player %d revent %d ", this->id, fds[0].revents);
+      if(fds[0].revents & POLLIN)
+      {
+        char n_a[1];
+        recv(this->fd, &n_a, 1, 0);
+
+        pthread_mutex_lock(&this->mut_action);
+        this->next_action = *n_a;
+        pthread_mutex_unlock(&this->mut_action);
+
+        
+        printf("player %d recieved %c\n", this->id, this->next_action);
+        if(this->next_action == 'q')
+        {
+          break;
+        }
+
+        my_send(this->fd, "OK");
+      }
+    }
+  }
 }
 void destroy_player(void * data, void * in, void * out, void * err)
 { 
   struct player * this = *(struct player **)data;
-  printf("destroy player %d a %p\n", this->fd, this);   
+  //printf("destroy player %d a %p\n", this->fd, this);   
 
+  this->work = 0;
   pthread_join(this->thread, NULL);
-
   pthread_mutex_destroy(&this->mut_action);
+
+  close(this->fd);
+
   free(this);
 }
 void server_start(struct server* this)
 {
   this->work = 1;
+  pthread_t l_thread;
+  pthread_create(&l_thread, NULL, server_logic,this);
+
   server_connect_players(this);
+  close(this->server_fd);
+
+  pthread_join(l_thread,NULL);
 }
+
+void* server_logic(void*arg)
+{
+  struct server* this = arg;
+  _Bool no_players = 0; 
+
+  time_t no_player_time_start = 0;
+  time_t curr_time;
+  while (this->work) {
+  
+    if(sll_get_size(this->players)==0)
+    {
+      if(no_player_time_start == 0)
+      {
+        time(&no_player_time_start);
+      }
+      time(&curr_time);
+      if((curr_time-no_player_time_start) > NO_ACTIVY_SERVER_END)
+      {
+        this->work = 0;
+      }
+      printf("no players for %d s\n", (curr_time - no_player_time_start));
+      
+    }
+    else
+    {
+      server_tick(this);
+      if(no_player_time_start != 0)
+      {
+        no_player_time_start = 0;
+      }
+    } 
+    sleep(1);
+  }
+}
+void server_tick(struct server * this)
+{
+  ;
+}
+
 
 void server_destroy(struct server * this)
 {
@@ -143,6 +243,7 @@ int main (int argc, char* argv[])
   server_init(&s, PORT);
   printf("server initialized\n");
   server_start(&s);
+  printf("server ended\n");
   server_destroy(&s);
 
 }

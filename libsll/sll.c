@@ -7,12 +7,12 @@
 
 sll_node* create_node( sll* this, void* data )
 {
-	printf("do sll idu data: %p\n", data);
+	//printf("do sll idu data: %p\n", data);
 	sll_node* node = malloc(sizeof(sll_node));
 	node->data_ = malloc(this->dataSize_);
   node -> next_= NULL;
 	memcpy(node->data_, data, this->dataSize_);
-	printf("v node je: %p\n", node->data_);
+	//printf("v node je: %p\n", node->data_);
 
 	return node;
 }

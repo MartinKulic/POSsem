@@ -1,7 +1,6 @@
 //client.h
 #pragma once
 
-
 #include <poll.h>
 #include <stdatomic.h>
 
