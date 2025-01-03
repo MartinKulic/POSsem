@@ -118,6 +118,7 @@ void destroy_player(void * data, void * in, void * out, void * err)
   pthread_join(this->thread, NULL);
 
   pthread_mutex_destroy(&this->mut_action);
+  free(this);
 }
 void server_start(struct server* this)
 {
