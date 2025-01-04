@@ -9,6 +9,7 @@
 #include "server.h"
 #include "../share/com_protocol.h"
 
+
 int server_init(struct server* this, int port)
 {
   // setup communication
@@ -153,6 +154,7 @@ void player_in_task(struct player * this)
         printf("player %d recieved %c\n", this->id, this->next_action);
         if(this->next_action == 'q')
         {
+          this->work = 0;
           break;
         }
 
@@ -222,7 +224,55 @@ void* server_logic(void*arg)
 }
 void server_tick(struct server * this)
 {
-  ;
+  sll index_endedPlayers;
+  sll_init(&index_endedPlayers, sizeof(int));
+  int index = 0;
+
+  pthread_mutex_lock(this->mut_players);
+  sll_for_each(this->players, &server_ack_player_next_action, NULL, NULL, NULL);
+  pthread_mutex_unlock(this->mut_players);
+    
+  sll_for_each(this->players, &server_do_player_action, &index, &index_endedPlayers, NULL);
+
+  if(sll_get_size(&index_endedPlayers) > 0)
+  {
+    pthread_mutex_lock(this->mut_players);
+    sll_for_each(&index_endedPlayers, &remove_player_from_players, this->players, NULL, NULL);
+    pthread_mutex_unlock(this->mut_players);
+  }
+  sll_clear(&index_endedPlayers);
+}
+void server_ack_player_next_action(void * data, void * in, void * out, void * err)
+{
+  struct player * player = *(struct player **) data;
+   
+  pthread_mutex_lock(&player->mut_action);
+ 
+  player->action = player->next_action;
+  
+  pthread_mutex_unlock(&player->mut_action);
+   
+}
+void server_do_player_action(void * data, void * in, void * out, void * err)
+{
+  struct player * player = *(struct player **) data;
+  int * index = (int *)in;
+  printf("\tplayer-%d-i>%d-na> %c -a> %c\n", player->id, *index, player->next_action, player->action);
+
+  if(player->action == 'q'){
+    destroy_player(&player,NULL,NULL,NULL);
+    sll * index_p = out;
+    sll_add(index_p, index);
+  }
+
+  *index = *index+1;
+}
+void remove_player_from_players(void * data, void * in, void * out, void * err)
+{
+  int index = *(int *)data;
+  printf("removing player at %d\n", index);
+  sll * players = in;
+  sll_remove(players, index);
 }
 
 
@@ -231,7 +281,6 @@ void server_destroy(struct server * this)
   this->work = 0;
   sll_for_each(this->players, &destroy_player, NULL, NULL, NULL);
   free(this->mut_players);
-  
 
   sll_clear(this->players);
   free(this->players);

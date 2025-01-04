@@ -93,7 +93,6 @@ void * communication_task(void * arg)
  
     if (poll(this->fds,2,900)>0)
     {
-      printf("bfr poll\n");
       if (this->fds[0].revents & POLLIN)
       {
         com_out_task(this);

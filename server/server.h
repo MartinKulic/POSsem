@@ -48,6 +48,10 @@ void * server_logic(void * arg);
 void * player_init_a_dispache(void * arg);
 void player_in_task(struct player* this);
 void server_tick(struct server * this);
+void server_ack_player_next_action(void * d, void * i, void * o, void * e);
+void server_do_player_action(void * d, void * i, void * o, void * e);
+
+void remove_player_from_players(void* d, void * i, void * o, void *e);
 
 void destroy_player(void * data, void * in, void * out, void * err);
 void server_destroy(struct server * this);
