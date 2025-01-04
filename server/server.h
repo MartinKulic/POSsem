@@ -13,6 +13,10 @@
 #define PORT 8080
 #define NO_ACTIVY_SERVER_END 10 //10 sekund 
 
+typedef struct coord{
+  int x;
+  int y;
+}coord;
 typedef struct player{
   int id;
   int fd;
@@ -29,12 +33,13 @@ typedef struct player{
 typedef struct server {
   struct sll* players;
   size_t MAX_PLAYERS;
-  int count_active_players;
   int server_fd;
   struct sockaddr_in address;
   atomic_bool work;
   pthread_mutex_t* mut_players;
-  //char mapa[][];
+  char ** map;
+  char ** no_player_map;
+  struct coord MAX_MAP;
 } server;
 typedef struct ser_pla{
   struct player * player;
@@ -51,7 +56,13 @@ void server_tick(struct server * this);
 void server_ack_player_next_action(void * d, void * i, void * o, void * e);
 void server_do_player_action(void * d, void * i, void * o, void * e);
 
+void clone_map(char** src, char** dest, coord dim);
+void player_move(struct player* this, struct coord direction, char ** map);
+struct coord generate_fruit(char ** map);
+
 void remove_player_from_players(void* d, void * i, void * o, void *e);
+
+void print_map(char ** map, struct coord dim);
 
 void destroy_player(void * data, void * in, void * out, void * err);
 void server_destroy(struct server * this);

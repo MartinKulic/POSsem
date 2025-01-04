@@ -15,6 +15,7 @@ int server_init(struct server* this, int port)
   // setup communication
   int opt = 1;
   this->MAX_PLAYERS = 5;
+  this->MAX_MAP = (struct coord){50,25};
   
   if((this->server_fd=socket(AF_INET, SOCK_STREAM, 0)) < 0)
   {
@@ -49,6 +50,21 @@ int server_init(struct server* this, int port)
   sll_init(this->players, sizeof(struct player **));
   this->mut_players = calloc(1, sizeof(pthread_mutex_t));
   pthread_mutex_init(this->mut_players, NULL);
+  
+  this->map = malloc(this->MAX_MAP.y * sizeof(char*));//riadky
+  this->no_player_map = malloc(this->MAX_MAP.y * sizeof(char*));
+  for(size_t i = 0; i < this->MAX_MAP.y; i++)
+  {
+    this->map[i] = malloc(this->MAX_MAP.x * sizeof(char));//znaky v riadkoch
+    memset(this->map[i], 'p', this->MAX_MAP.x);
+
+    this->no_player_map[i] = malloc(this->MAX_MAP.x * sizeof(char));
+    memset(this->no_player_map[i], '.', this->MAX_MAP.x);
+
+    //printf("%c\n", this->map[i][2]);
+  }
+  print_map(this->map, this->MAX_MAP);
+  
 }
 
 void * server_connect_players(void * arg)
@@ -123,6 +139,15 @@ void * player_init_a_dispache(void * arg)
 
   //char * msg = "OK";
   my_send(player->fd, "OK");
+
+  player->body=calloc(1, sizeof(struct sll));
+  sll_init(player->body, sizeof(struct coord));
+  struct coord init = {2,2};
+  sll_add(player->body, &init);
+  init.x = 1;
+  init.y = 2;
+  sll_add(player->body, &init);
+
 //  int conv_next_msg_size = htonl(strlen(msg));
 //  send(player->fd, &conv_next_msg_size, sizeof(conv_next_msg_size), 0);
 //  send(player->fd, msg, strlen(msg), 0);
@@ -140,7 +165,7 @@ void player_in_task(struct player * this)
   {
     if(poll(fds, 1, 1000) > 0)
     {
-      printf("player %d revent %d ", this->id, fds[0].revents);
+      //printf("player %d revent %d ", this->id, fds[0].revents);
       if(fds[0].revents & POLLIN)
       {
         char n_a[1];
@@ -151,7 +176,7 @@ void player_in_task(struct player * this)
         pthread_mutex_unlock(&this->mut_action);
 
         
-        printf("player %d recieved %c\n", this->id, this->next_action);
+        //printf("player %d recieved %c\n", this->id, this->next_action);
         if(this->next_action == 'q')
         {
           this->work = 0;
@@ -171,6 +196,9 @@ void destroy_player(void * data, void * in, void * out, void * err)
   this->work = 0;
   pthread_join(this->thread, NULL);
   pthread_mutex_destroy(&this->mut_action);
+  
+  sll_clear(this->body);
+  free(this->body);
 
   close(this->fd);
 
@@ -228,24 +256,41 @@ void server_tick(struct server * this)
   sll_init(&index_endedPlayers, sizeof(int));
   int index = 0;
 
-  pthread_mutex_lock(this->mut_players);
-  sll_for_each(this->players, &server_ack_player_next_action, NULL, NULL, NULL);
-  pthread_mutex_unlock(this->mut_players);
-    
-  sll_for_each(this->players, &server_do_player_action, &index, &index_endedPlayers, NULL);
+print_map(this->map, this->MAX_MAP);
 
+  pthread_mutex_lock(this->mut_players);
+  sll_for_each(this->players, &server_ack_player_next_action, &index, &index_endedPlayers, NULL);
+  
   if(sll_get_size(&index_endedPlayers) > 0)
   {
-    pthread_mutex_lock(this->mut_players);
     sll_for_each(&index_endedPlayers, &remove_player_from_players, this->players, NULL, NULL);
-    pthread_mutex_unlock(this->mut_players);
   }
+  pthread_mutex_unlock(this->mut_players);
+
+  clone_map(this->no_player_map, this->map, this->MAX_MAP);
+  sll_for_each(this->players, &server_do_player_action, NULL, this->map, NULL);
+
+  
   sll_clear(&index_endedPlayers);
+
+  
 }
 void server_ack_player_next_action(void * data, void * in, void * out, void * err)
 {
   struct player * player = *(struct player **) data;
-   
+  int * index = (int *)in;
+  //printf("\tplayer-%d-i>%d-na> %c -a> %c\n", player->id, *index, player->next_action, player->action);
+
+  if(player->next_action == 'q')
+  {
+      destroy_player(&player,NULL,NULL,NULL);
+      sll * index_p = out;
+      sll_add(index_p, index);
+      *index = *index+1;
+      return ;
+  }
+
+  *index = *index+1;
   pthread_mutex_lock(&player->mut_action);
  
   player->action = player->next_action;
@@ -256,17 +301,58 @@ void server_ack_player_next_action(void * data, void * in, void * out, void * er
 void server_do_player_action(void * data, void * in, void * out, void * err)
 {
   struct player * player = *(struct player **) data;
-  int * index = (int *)in;
-  printf("\tplayer-%d-i>%d-na> %c -a> %c\n", player->id, *index, player->next_action, player->action);
+  char ** map = out;
 
-  if(player->action == 'q'){
-    destroy_player(&player,NULL,NULL,NULL);
-    sll * index_p = out;
-    sll_add(index_p, index);
+  printf("plr action %c\n", player->action);
+    
+  switch (player->action)
+  {
+    case 'A':
+      player_move(player, (struct coord){0, (int)(-1)}, map);
+    break;
+    case 'V':
+      player_move(player, (struct coord){0, 1}, map);
+    break;
+    case '<':
+      player_move(player, (struct coord){-1, 0}, map);
+    break;
+    case '>':
+      player_move(player, (struct coord){1, 0}, map);
+    break;
   }
-
-  *index = *index+1;
+  
 }
+
+void player_move(struct player* this, struct coord direction, char ** map)
+{
+  struct coord * headData = (struct coord*)this->body->head_->data_;
+  struct coord prev_position;
+    prev_position = *headData;
+  headData->x += direction.x;
+  headData->y += direction.y;
+  printf("p %d ( %d ; %d )", this->id, headData->x, headData->y);
+  if (map[headData->y][headData->x]=='f')
+  {
+    //zedol ovocie
+  }
+  map[headData->y][headData->x]= this->action;
+
+
+  sll_node* node = this->body->head_->next_;
+  while(node != NULL)
+	{
+		struct coord helper = *(struct coord*)node->data_;
+    *(struct coord*)node->data_ = prev_position;
+    prev_position = helper;
+
+    map[((struct coord*)(node->data_))->y][((struct coord*)(node->data_))->x]='H';
+    printf(" -> ( %d ; %d )", ((struct coord*)(node->data_))->x, ((struct coord*)(node->data_))->y);
+
+		node = node->next_;
+	}
+
+}
+
 void remove_player_from_players(void * data, void * in, void * out, void * err)
 {
   int index = *(int *)data;
@@ -275,7 +361,31 @@ void remove_player_from_players(void * data, void * in, void * out, void * err)
   sll_remove(players, index);
 }
 
-
+void clone_map(char** src, char** dest, coord dim)
+{
+  for(size_t i = 0; i < dim.y; i++)
+  {
+    memcpy(dest[i], src[i], dim.x);//nemali by sa nikdy prekrivat
+  }
+}
+void print_map(char** map, struct coord dim)
+{
+  for (int i = 0; i<dim.x; i++)
+  {
+    printf("%d ",i);
+  }
+  printf("\n");
+  for(size_t i = 0; i < dim.y; i++)
+  {
+    printf("%d ", i);
+    for(size_t ii = 0; ii < dim.x; ii++)
+    {
+      printf("%c", *map[ii,i]);
+    }
+    printf("\n");
+  }
+  printf("-------------------------\n\n");
+}
 void server_destroy(struct server * this)
 {
   this->work = 0;
@@ -284,6 +394,14 @@ void server_destroy(struct server * this)
 
   sll_clear(this->players);
   free(this->players);
+
+  for(size_t i = 0; i < this->MAX_MAP.y; i++)
+  {
+    free(this->map[i]);
+    free(this->no_player_map[i]);
+  }
+  free(this->map);
+  free(this->no_player_map);
 }
 //--------------------------------------
 int main (int argc, char* argv[])
