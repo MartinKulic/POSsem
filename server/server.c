@@ -1,5 +1,6 @@
 //server.c
 #include <sys/socket.h>
+#include <poll.h>
 #include <sys/poll.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -51,23 +52,29 @@ int server_init(struct server* this, int port)
   this->mut_players = calloc(1, sizeof(pthread_mutex_t));
   pthread_mutex_init(this->mut_players, NULL);
   
-  this->map = malloc(this->MAX_MAP.y * sizeof(char*));//riadky
-  this->no_player_map = malloc(this->MAX_MAP.y * sizeof(char*));
+  this->map = malloc(this->MAX_MAP.y * sizeof(map_cell*));//riadky
+  this->no_player_map = malloc(this->MAX_MAP.y * sizeof(map_cell*));
   for(size_t i = 0; i < this->MAX_MAP.y; i++)
   {
-    this->map[i] = malloc(this->MAX_MAP.x * sizeof(char));//znaky v riadkoch
-    memset(this->map[i], 'p', this->MAX_MAP.x);
+    this->map[i] = malloc(this->MAX_MAP.x * sizeof(map_cell));//znaky v riadkoch
 
-    this->no_player_map[i] = malloc(this->MAX_MAP.x * sizeof(char));
-    memset(this->no_player_map[i], '.', this->MAX_MAP.x);
-
+    this->no_player_map[i] = malloc(this->MAX_MAP.x * sizeof(map_cell));
+    
+    for(size_t ii = 0; ii < this->MAX_MAP.x; ii++)
+    {
+      this->map[i][ii] = (struct map_cell){'-', RESET};
+      this->no_player_map[i][ii] = EMPTY_CELL;
+    }
     //printf("%c\n", this->map[i][2]);
   }
+
+  this->fruit_left=0;
   printf("mapa:\n");
   print_map(this->map, this->MAX_MAP);
   printf("no_player_map: \n");
   print_map(this->no_player_map, this->MAX_MAP);
-  
+ 
+  return 1;
 }
 
 void * server_connect_players(void * arg)
@@ -123,6 +130,7 @@ void * server_connect_players(void * arg)
       }
     }
   }
+  return NULL;
 }
 void * player_init_a_dispache(void * arg)
 {
@@ -145,11 +153,11 @@ void * player_init_a_dispache(void * arg)
 
   player->body=calloc(1, sizeof(struct sll));
   sll_init(player->body, sizeof(struct coord));
+  
   struct coord init = {2,2};
   sll_add(player->body, &init);
-  init.x = 1;
-  init.y = 2;
-  sll_add(player->body, &init);
+
+  player->colour = BLUE_P_C;
 
 //  int conv_next_msg_size = htonl(strlen(msg));
 //  send(player->fd, &conv_next_msg_size, sizeof(conv_next_msg_size), 0);
@@ -157,6 +165,7 @@ void * player_init_a_dispache(void * arg)
   player->work = 1;
 
   player_in_task(player);
+  return NULL;
 }
 void player_in_task(struct player * this)
 {
@@ -186,7 +195,7 @@ void player_in_task(struct player * this)
           break;
         }
 
-        my_send(this->fd, "OK");
+  //      my_send(this->fd, "OK");
       }
     }
   }
@@ -222,11 +231,13 @@ void server_start(struct server* this)
 void* server_logic(void*arg)
 {
   struct server* this = arg;
-  _Bool no_players = 0; 
+  _Bool no_players = 0;
+  struct pollfd fds[0];
 
   time_t no_player_time_start = 0;
   time_t curr_time;
-  while (this->work) {
+  while (this->work)
+  {
   
     if(sll_get_size(this->players)==0)
     {
@@ -250,15 +261,17 @@ void* server_logic(void*arg)
         no_player_time_start = 0;
       }
     } 
-    sleep(1);
+ //   struct timespec ts = {SERVER_TICK/1000, (SERVER_TICK%1000)*1000000};
+ //   nanosleep(SERVER_TICK);
+    poll(fds,0,SERVER_TICK);
   }
+  return NULL;
 }
 void server_tick(struct server * this)
 {
   sll index_endedPlayers;
   sll_init(&index_endedPlayers, sizeof(int));
   int index = 0;
-
 
   pthread_mutex_lock(this->mut_players);
   sll_for_each(this->players, &server_ack_player_next_action, &index, &index_endedPlayers, NULL);
@@ -270,15 +283,24 @@ void server_tick(struct server * this)
   pthread_mutex_unlock(this->mut_players);
 
   clone_map(this->no_player_map, this->map, this->MAX_MAP);
-  sll_for_each(this->players, &server_do_player_action, NULL, this->map, NULL);
+  sll_for_each(this->players, &server_do_player_action, &this->fruit_left, this->map, this->no_player_map);
   print_map(this->map, this->MAX_MAP);
 
-  printf("na (5,2) %c (6,2)%c\n", this->map[2][5], this->map[2][6]);
+  printf("left %d numPl %d \n",this->fruit_left, sll_get_size(this->players));
+  if(this->fruit_left < sll_get_size(this->players))
+  {
+    printf("generating new fruit\n");
+    if(try_generate_fruit(this->map, this->no_player_map, this->MAX_MAP)==1)
+    {
+      this->fruit_left++;
+    }
+  }
 
   sll_clear(&index_endedPlayers);
 
   
 }
+
 void server_ack_player_next_action(void * data, void * in, void * out, void * err)
 {
   struct player * player = *(struct player **) data;
@@ -302,32 +324,35 @@ void server_ack_player_next_action(void * data, void * in, void * out, void * er
   pthread_mutex_unlock(&player->mut_action);
    
 }
+
 void server_do_player_action(void * data, void * in, void * out, void * err)
 {
   struct player * player = *(struct player **) data;
-  char ** map = out;
+  map_cell ** map = out;
+  map_cell ** map_n_p = err;
+  int * fruit_left = (int *) in;
 
   printf("plr action %c\n", player->action);
     
   switch (player->action)
   {
     case 'A':
-      player_move(player, (struct coord){0, (int)(-1)}, map);
+      player_move(player, (struct coord){0, (int)(-1)}, map, map_n_p, fruit_left);
     break;
     case 'V':
-      player_move(player, (struct coord){0, 1}, map);
+      player_move(player, (struct coord){0, 1}, map, map_n_p, fruit_left);
     break;
     case '<':
-      player_move(player, (struct coord){-1, 0}, map);
+      player_move(player, (struct coord){-1, 0}, map, map_n_p, fruit_left);
     break;
     case '>':
-      player_move(player, (struct coord){1, 0}, map);
+      player_move(player, (struct coord){1, 0}, map, map_n_p, fruit_left);
     break;
   }
   
 }
 
-void player_move(struct player* this, struct coord direction, char ** map)
+void player_move(struct player* this, struct coord direction, map_cell ** map, map_cell** map_n_p, int * fruit_left)
 {
   struct coord * headData = (struct coord*)this->body->head_->data_;
   struct coord prev_position;
@@ -335,11 +360,14 @@ void player_move(struct player* this, struct coord direction, char ** map)
   headData->x += direction.x;
   headData->y += direction.y;
   printf("p %d ( %d ; %d )", this->id, headData->x, headData->y);
-  if (map[headData->y][headData->x]=='f')
+  if (map[headData->y][headData->x].ch == FRUIT_CH)
   {
-    //zedol ovocie
+    sll_add(this->body, &prev_position);
+    (*fruit_left)--;
+    this->scor++;
+    map_n_p[headData->y][headData->x] = EMPTY_CELL;
   }
-  map[headData->y][headData->x] = this->action;
+  map[headData->y][headData->x] = (struct map_cell){this->action,this->colour};
 
 
   sll_node* node = this->body->head_->next_;
@@ -349,7 +377,7 @@ void player_move(struct player* this, struct coord direction, char ** map)
     *(struct coord*)node->data_ = prev_position;
     prev_position = helper;
 
-    map[((struct coord*)(node->data_))->y][((struct coord*)(node->data_))->x]='H';
+    map[((struct coord*)(node->data_))->y][((struct coord*)(node->data_))->x] = (struct map_cell){'H',this->colour};
     printf(" -> ( %d ; %d )", ((struct coord*)(node->data_))->x, ((struct coord*)(node->data_))->y);
 
 		node = node->next_;
@@ -366,38 +394,6 @@ void remove_player_from_players(void * data, void * in, void * out, void * err)
   sll_remove(players, index);
 }
 
-void clone_map(char** src, char** dest, coord dim)
-{
- // printf("\nsrc: \n");
- // print_map(src, dim);
- // printf("des\n");
- // print_map(dest, dim);
-
-  for(size_t i = 0; i < dim.y; i++)
-  {
-    memcpy(dest[i], src[i], dim.x);//nemali by sa nikdy prekrivat
-  }
- // printf("dest aftar\n");
- // print_map(dest, dim);
-}
-void print_map(char** map, struct coord dim)
-{
-  for (int i = 0; i<dim.x; i++)
-  {
-    printf("%d ",i);
-  }
-  printf("\n");
-  for(size_t i = 0; i < dim.y; i++)
-  {
-    printf("%d ", i);
-    for(size_t ii = 0; ii < dim.x; ii++)
-    {
-      printf("%c", map[i][ii]);
-    }
-    printf("\n");
-  }
-  printf("-------------------------\n\n");
-}
 void server_destroy(struct server * this)
 {
   this->work = 0;
