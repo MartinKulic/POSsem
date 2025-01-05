@@ -63,7 +63,10 @@ int server_init(struct server* this, int port)
 
     //printf("%c\n", this->map[i][2]);
   }
+  printf("mapa:\n");
   print_map(this->map, this->MAX_MAP);
+  printf("no_player_map: \n");
+  print_map(this->no_player_map, this->MAX_MAP);
   
 }
 
@@ -256,7 +259,6 @@ void server_tick(struct server * this)
   sll_init(&index_endedPlayers, sizeof(int));
   int index = 0;
 
-print_map(this->map, this->MAX_MAP);
 
   pthread_mutex_lock(this->mut_players);
   sll_for_each(this->players, &server_ack_player_next_action, &index, &index_endedPlayers, NULL);
@@ -269,8 +271,10 @@ print_map(this->map, this->MAX_MAP);
 
   clone_map(this->no_player_map, this->map, this->MAX_MAP);
   sll_for_each(this->players, &server_do_player_action, NULL, this->map, NULL);
+  print_map(this->map, this->MAX_MAP);
 
-  
+  printf("na (5,2) %c (6,2)%c\n", this->map[2][5], this->map[2][6]);
+
   sll_clear(&index_endedPlayers);
 
   
@@ -327,7 +331,7 @@ void player_move(struct player* this, struct coord direction, char ** map)
 {
   struct coord * headData = (struct coord*)this->body->head_->data_;
   struct coord prev_position;
-    prev_position = *headData;
+  prev_position = *headData;
   headData->x += direction.x;
   headData->y += direction.y;
   printf("p %d ( %d ; %d )", this->id, headData->x, headData->y);
@@ -335,7 +339,7 @@ void player_move(struct player* this, struct coord direction, char ** map)
   {
     //zedol ovocie
   }
-  map[headData->y][headData->x]= this->action;
+  map[headData->y][headData->x] = this->action;
 
 
   sll_node* node = this->body->head_->next_;
@@ -350,6 +354,7 @@ void player_move(struct player* this, struct coord direction, char ** map)
 
 		node = node->next_;
 	}
+	printf("\n");
 
 }
 
@@ -363,10 +368,17 @@ void remove_player_from_players(void * data, void * in, void * out, void * err)
 
 void clone_map(char** src, char** dest, coord dim)
 {
+ // printf("\nsrc: \n");
+ // print_map(src, dim);
+ // printf("des\n");
+ // print_map(dest, dim);
+
   for(size_t i = 0; i < dim.y; i++)
   {
     memcpy(dest[i], src[i], dim.x);//nemali by sa nikdy prekrivat
   }
+ // printf("dest aftar\n");
+ // print_map(dest, dim);
 }
 void print_map(char** map, struct coord dim)
 {
@@ -380,7 +392,7 @@ void print_map(char** map, struct coord dim)
     printf("%d ", i);
     for(size_t ii = 0; ii < dim.x; ii++)
     {
-      printf("%c", *map[ii,i]);
+      printf("%c", map[i][ii]);
     }
     printf("\n");
   }
