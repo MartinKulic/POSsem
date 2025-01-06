@@ -13,7 +13,7 @@
 
 #define PORT 8080
 #define NO_ACTIVY_SERVER_END 10 //10 sekund
-#define SERVER_TICK 250
+#define SERVER_TICK 1000
 
 #define P_GAME_END 'e'
 #define P_GAME_QUIT 'q'

@@ -27,7 +27,7 @@ sll_node* get_node(sll* this, size_t index)
 {
 	sll_node* node = this->head_;
 	
-	for (int i = 0; i < index; i++ )
+	for (size_t i = 0; i < index; i++ )
 	{
 		node = node->next_;
 	}
@@ -129,7 +129,7 @@ _Bool sll_insert (sll* this, size_t index, void* data, size_t size)
 		return 1;
 	}
 
-	for (int i=0; i < index-1; i++)
+	for (size_t i=0; i < index-1; i++)
 	{
 		prevPtr = &((*prevPtr) -> next_);
 	}
@@ -164,13 +164,13 @@ _Bool sll_remove(sll* this, size_t index)
   sll_node* prevNode = NULL;
   sll_node** nextPtr = &(this->head_);
 
-  for (int i = 0; i<index; i++)
+  for (size_t i = 0; i<index; i++)
   {
     prevNode = *nextPtr;
     nextPtr = &((*nextPtr)->next_);
   }
 
-  if(index == this->size_-1)
+  if(index == this->size_)
   {
     this->tail_ = prevNode;
   }
