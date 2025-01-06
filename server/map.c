@@ -14,14 +14,9 @@ void clone_map(map_cell** src, map_cell** dest, coord dim)
 }
 void print_map(map_cell** map, struct coord dim)
 {
-  for (int i = 0; i<dim.x; i++)
-  {
-    printf("%d ",i);
-  }
   printf("\n");
   for(size_t i = 0; i < dim.y; i++)
   {
-    printf("%d ", i);
     for(size_t ii = 0; ii < dim.x; ii++)
     {
       printf("%s%c%s", map[i][ii].control, map[i][ii].ch, RESET);
@@ -34,7 +29,6 @@ void print_map(map_cell** map, struct coord dim)
 _Bool check_colision(map_cell** map, coord head_pos, char player_action)
 {
   //coord head_pos = *(player->body->head_->data_);
-  printf("at head po %c - p action %c\n", map[head_pos.y][head_pos.x].ch, player_action );
   return map[head_pos.y][head_pos.x].ch != player_action;
 }
 

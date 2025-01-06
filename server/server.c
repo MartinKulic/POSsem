@@ -68,9 +68,14 @@ int server_init(struct server* this, int port)
     //printf("%c\n", this->map[i][2]);
   }
 
+  this->no_player_map[10][10] = BLOCK_CELL;
+  this->no_player_map[10][11] = BLOCK_CELL;
+  this->no_player_map[11][10] = BLOCK_CELL;
+  this->no_player_map[11][11] = BLOCK_CELL;
+
+  this->no_player_map[10][9] = BLOCK_CELL;
+
   this->fruit_left=0;
-  printf("mapa:\n");
-  print_map(this->map, this->MAX_MAP);
   printf("no_player_map: \n");
   print_map(this->no_player_map, this->MAX_MAP);
  
@@ -157,7 +162,20 @@ void * player_init_a_dispache(void * arg)
   struct coord init = {2,2};
   sll_add(player->body, &init);
 
-  player->colour = BLUE_P_C;
+  int col = rand()%5;
+  switch (col) {
+    case 0:
+      player->colour = RED_P_C;
+    break;
+    case 1:
+      player->colour = GREEN_P_C;
+    break;
+    case 2:
+      player->colour = WHITE_P_C;
+    break;
+    case 3:
+      player->colour = BLUE_P_C; 
+  }
 
 //  int conv_next_msg_size = htonl(strlen(msg));
 //  send(player->fd, &conv_next_msg_size, sizeof(conv_next_msg_size), 0);
@@ -189,7 +207,7 @@ void player_in_task(struct player * this)
 
         
         //printf("player %d recieved %c\n", this->id, this->next_action);
-        if(this->next_action == 'q')
+        if(this->next_action == P_GAME_QUIT)
         {
           this->work = 0;
           break;
@@ -284,7 +302,7 @@ void server_tick(struct server * this)
   }
   pthread_mutex_unlock(this->mut_players);
 
-    sll_for_each(this->players, &server_do_player_action, &this->fruit_left, this->map, this->no_player_map);
+  sll_for_each(this->players, &server_do_player_action, &this->fruit_left, this->map, this->no_player_map);
   print_map(this->map, this->MAX_MAP);
 
   printf("left %d numPl %d \n",this->fruit_left, sll_get_size(this->players));
@@ -409,7 +427,7 @@ void player_move(struct player* this, struct coord direction, map_cell ** map, m
     *(struct coord*)node->data_ = prev_position;
     prev_position = helper;
 
-    map[((struct coord*)(node->data_))->y][((struct coord*)(node->data_))->x] = (struct map_cell){'H',this->colour};
+    map[((struct coord*)(node->data_))->y][((struct coord*)(node->data_))->x] = (struct map_cell){SNAKE_BODY_CH,this->colour};
     printf(" -> ( %d ; %d )", ((struct coord*)(node->data_))->x, ((struct coord*)(node->data_))->y);
 
 		node = node->next_;
