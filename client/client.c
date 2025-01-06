@@ -158,13 +158,19 @@ void com_out_task(struct communication_data* data)
         }// je 3. char
       }// 2. char je [
     }// je 2. char
-    else // nie je 2. char
+    else// nie je 2. char
     {
       printf("esc\n");
       send(data->client_fd, "q", 1, 0);
       data->work = 0;
     }
   }// 1. char je 27 - \033
+  else if (ch[0]=='e')
+  {
+    printf("esc\n");
+    send(data->client_fd, "q", 1, 0);
+    data->work = 0;
+  }
 }
 
 //--------------------------------------------

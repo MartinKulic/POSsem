@@ -18,6 +18,7 @@
 #define P_GAME_END 'e'
 #define P_GAME_QUIT 'q'
 #define P_GAME_PAUSE 'p'
+#define P_NEW_PLAYER 'n'
 
 typedef struct player{
   int id;
@@ -30,6 +31,7 @@ typedef struct player{
   pthread_t thread;
   char * colour;
   struct sll * body;
+  time_t start_move_at;
 }player;
 
 typedef struct server {
@@ -39,7 +41,8 @@ typedef struct server {
   struct sockaddr_in address;
   atomic_bool work;
   pthread_mutex_t* mut_players;
-  map * map;
+  pthread_mutex_t* mut_map;
+  struct map * map;
   int fruit_left;
 } server;
 
@@ -54,8 +57,9 @@ void * server_connect_players(void * arg);
 void * server_logic(void * arg);
 void * player_init_a_dispache(void * arg);
 void players_check_colision_w_other_players(void * d, void * i, void * o, void * e);
-_Bool player_check_colision_w_other_players(player * this, sll * players);
+_Bool player_check_colision_w_other_players(struct player * this, sll * players);
 void player_move(struct player* this, struct coord direction, map* map, int * fruit_left);
+void set_players_start_at_time_to(void* data, void* in, void* out, void* err);
 void player_in_task(struct player* this);
 void server_tick(struct server * this);
 void server_ack_player_next_action(void * d, void * i, void * o, void * e);

@@ -20,15 +20,27 @@ void clone_map(map_cell** src, map_cell** dest, coord dim)
 void print_map(map_cell** map, struct coord dim)
 {
   printf("\n");
+  printf("┏");
+  for(size_t i = 0; i < dim.x; i++)
+  {
+    printf("━");
+  }
+  printf("┓\n");
   for(size_t i = 0; i < dim.y; i++)
   {
+    printf("┃");
     for(size_t ii = 0; ii < dim.x; ii++)
     {
       printf("%s%c%s", map[i][ii].control, map[i][ii].ch, RESET);
     }
-    printf("\n");
+    printf("┃\n");
   }
-  printf("-------------------------\n\n");
+  printf("┗");
+  for(size_t i = 0; i < dim.x; i++)
+  {
+    printf("━");
+  }
+  printf("┛\n");
 }
 
 _Bool check_colision(map_cell** map, coord head_pos, char player_action)
@@ -57,7 +69,19 @@ _Bool try_generate_fruit(map * this)
   }
   return 0;
 }
+coord get_coord_for_new_player(struct map* this)
+{
+  int x = 5;
+  int y = 5;
 
+  while(this->map[y][x].ch != MAP_EMPTY)
+  { 
+    x = rand()%(this->dim.x-9)+5;
+    y = rand()%(this->dim.y-9)+5;
+  }
+
+  return (coord){x,y};
+}
 void map_init(map* this, map_cell default_fill ,coord dim)
 {
   this->dim = dim;
