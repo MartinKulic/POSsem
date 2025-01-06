@@ -13,8 +13,11 @@
 
 #define PORT 8080
 #define NO_ACTIVY_SERVER_END 10 //10 sekund
-#define SERVER_TICK 500
+#define SERVER_TICK 250
 
+#define P_GAME_END 'e'
+#define P_GAME_QUIT 'q'
+#define P_GAME_PAUSE 'p'
 
 typedef struct player{
   int id;
@@ -52,6 +55,8 @@ void server_start(struct server* this);
 void * server_connect_players(void * arg);
 void * server_logic(void * arg);
 void * player_init_a_dispache(void * arg);
+void players_check_colision_w_other_players(void * d, void * i, void * o, void * e);
+_Bool player_check_colision_w_other_players(player * this, sll * players);
 void player_move(struct player* this, struct coord direction, map_cell** map, map_cell** map_n_p, int * fruit_left);
 void player_in_task(struct player* this);
 void server_tick(struct server * this);

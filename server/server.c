@@ -273,6 +273,8 @@ void server_tick(struct server * this)
   sll_init(&index_endedPlayers, sizeof(int));
   int index = 0;
 
+  clone_map(this->no_player_map, this->map, this->MAX_MAP);
+
   pthread_mutex_lock(this->mut_players);
   sll_for_each(this->players, &server_ack_player_next_action, &index, &index_endedPlayers, NULL);
   
@@ -282,8 +284,7 @@ void server_tick(struct server * this)
   }
   pthread_mutex_unlock(this->mut_players);
 
-  clone_map(this->no_player_map, this->map, this->MAX_MAP);
-  sll_for_each(this->players, &server_do_player_action, &this->fruit_left, this->map, this->no_player_map);
+    sll_for_each(this->players, &server_do_player_action, &this->fruit_left, this->map, this->no_player_map);
   print_map(this->map, this->MAX_MAP);
 
   printf("left %d numPl %d \n",this->fruit_left, sll_get_size(this->players));
@@ -296,6 +297,8 @@ void server_tick(struct server * this)
     }
   }
 
+  sll_for_each(this->players, &players_check_colision_w_other_players, this->players, NULL, NULL);
+
   sll_clear(&index_endedPlayers);
 
   
@@ -306,14 +309,34 @@ void server_ack_player_next_action(void * data, void * in, void * out, void * er
   struct player * player = *(struct player **) data;
   int * index = (int *)in;
   //printf("\tplayer-%d-i>%d-na> %c -a> %c\n", player->id, *index, player->next_action, player->action);
-
-  if(player->next_action == 'q')
-  {
+  switch (player->next_action){
+    case P_GAME_QUIT:
       destroy_player(&player,NULL,NULL,NULL);
       sll * index_p = out;
       sll_add(index_p, index);
       *index = *index+1;
       return ;
+    break;
+    case P_GAME_PAUSE:
+
+    break;
+    case P_GAME_END:
+      *index = *index+1;
+      return ;
+    break;
+  }
+  if(player->action == P_GAME_END)
+  {
+    *index = *index+1;
+    return ;
+  }
+
+  if(((player->action=='<' || player->action=='>') && (player->next_action=='>'||player->next_action=='<'))
+    || ((player->action=='A' || player->action=='V') && (player->next_action=='V' || player->next_action=='A')) )
+  {
+    pthread_mutex_lock(&player->mut_action);
+    player->next_action = player->action;
+    pthread_mutex_unlock(&player->mut_action);
   }
 
   *index = *index+1;
@@ -348,6 +371,9 @@ void server_do_player_action(void * data, void * in, void * out, void * err)
     case '>':
       player_move(player, (struct coord){1, 0}, map, map_n_p, fruit_left);
     break;
+    case P_GAME_PAUSE:
+      player_move(player, (struct coord){0, 0}, map, map_n_p, fruit_left);
+    break;
   }
   
 }
@@ -360,6 +386,8 @@ void player_move(struct player* this, struct coord direction, map_cell ** map, m
   headData->x += direction.x;
   headData->y += direction.y;
   printf("p %d ( %d ; %d )", this->id, headData->x, headData->y);
+
+  
   if (map[headData->y][headData->x].ch == FRUIT_CH)
   {
     sll_add(this->body, &prev_position);
@@ -367,8 +395,12 @@ void player_move(struct player* this, struct coord direction, map_cell ** map, m
     this->scor++;
     map_n_p[headData->y][headData->x] = EMPTY_CELL;
   }
-  map[headData->y][headData->x] = (struct map_cell){this->action,this->colour};
+  else if (map[headData->y][headData->x].ch != MAP_EMPTY)//do prostredia pripadne do inych hadov
+  {
+    this->action = P_GAME_END;
+  }
 
+  map[headData->y][headData->x] = (struct map_cell){this->action,this->colour};
 
   sll_node* node = this->body->head_->next_;
   while(node != NULL)
@@ -382,8 +414,55 @@ void player_move(struct player* this, struct coord direction, map_cell ** map, m
 
 		node = node->next_;
 	}
+
+  _Bool re =check_colision(map, *(struct coord*)this->body->head_->data_, this->action);
+  printf("res %d,\n",re);
+  if(re==1)//sam do seba pripadne do inych hadov
+  {
+    this->action = P_GAME_END;
+  }
+
 	printf("\n");
 
+}
+void players_check_colision_w_other_players(void * data, void * in, void * out, void * err)
+{
+  player * player = *(struct player**)data;
+  sll * players = in;
+ 
+  if(player->action != P_GAME_PAUSE)
+  {
+    if(player_check_colision_w_other_players(player, players) == 1)
+    {
+      player->action = P_GAME_END;
+    }
+  }
+
+}
+
+_Bool player_check_colision_w_other_players(player * this, sll * players)
+{
+  coord* my_head_coord = this->body->head_->data_;
+  sll_node* players_node = players->head_;//prvy hrac
+	while(players_node != NULL)
+	{
+	  player * other_player = *(player**)players_node->data_;
+	  if(other_player != this)
+	  {
+      sll_node* other_body_node = other_player->body->head_;//ptva cast tela ineho hraca;
+      while (other_player != NULL)
+      {
+        coord* other_body_coord = (coord *)other_body_node->data_;
+        if(other_body_coord->x==my_head_coord->x && other_body_coord->y==my_head_coord->y)
+        {
+          return 1;
+        }
+        other_body_node = other_body_node->next_;
+      }
+	  }
+    players_node = players_node->next_;
+	}
+  return 0;
 }
 
 void remove_player_from_players(void * data, void * in, void * out, void * err)

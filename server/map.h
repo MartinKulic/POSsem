@@ -28,5 +28,6 @@ typedef struct map_cell{
 void map_init(map_cell** this, map_cell default_fill ,coord dim);
 void clone_map(map_cell** src, map_cell** dest, coord dim);
 void print_map(struct map_cell** map, struct coord dim);
+_Bool check_colision(map_cell** map, coord p, char player_action);
 _Bool try_generate_fruit(map_cell ** map_p, map_cell ** map_n_p, coord dim);
 void map_destroy(map_cell** map, coord dim);

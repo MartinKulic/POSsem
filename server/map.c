@@ -31,6 +31,13 @@ void print_map(map_cell** map, struct coord dim)
   printf("-------------------------\n\n");
 }
 
+_Bool check_colision(map_cell** map, coord head_pos, char player_action)
+{
+  //coord head_pos = *(player->body->head_->data_);
+  printf("at head po %c - p action %c\n", map[head_pos.y][head_pos.x].ch, player_action );
+  return map[head_pos.y][head_pos.x].ch != player_action;
+}
+
 _Bool try_generate_fruit(map_cell** map_p, map_cell ** map_n_p, coord dim)
 {
   for(int i = 0; i < 1000000; i++)
