@@ -39,9 +39,7 @@ typedef struct server {
   struct sockaddr_in address;
   atomic_bool work;
   pthread_mutex_t* mut_players;
-  map_cell ** map;
-  map_cell ** no_player_map;
-  struct coord MAX_MAP;
+  map * map;
   int fruit_left;
 } server;
 
@@ -57,7 +55,7 @@ void * server_logic(void * arg);
 void * player_init_a_dispache(void * arg);
 void players_check_colision_w_other_players(void * d, void * i, void * o, void * e);
 _Bool player_check_colision_w_other_players(player * this, sll * players);
-void player_move(struct player* this, struct coord direction, map_cell** map, map_cell** map_n_p, int * fruit_left);
+void player_move(struct player* this, struct coord direction, map* map, int * fruit_left);
 void player_in_task(struct player* this);
 void server_tick(struct server * this);
 void server_ack_player_next_action(void * d, void * i, void * o, void * e);

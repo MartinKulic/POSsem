@@ -7,7 +7,7 @@
 #define WHITE_P_C "\033[1;30;47m"
 #define BLUE_P_C  "\033[1;30;46m"
 
-#define SNAKE_BODY_CH 177 //178
+#define SNAKE_BODY_CH 'H' //178
 
 #define FRUIT_1_C "\033[1;97;103m"
 #define FRUIT_CH 'O'
@@ -16,7 +16,7 @@
 
 
 #define BLOCK_C "\033[1;107;107m"
-#define BLOCK_CH 219
+#define BLOCK_CH 'D' //219
 #define BLOCK_CELL (struct map_cell){BLOCK_CH, BLOCK_C}
 
 #define MAP_EMPTY ' '
@@ -38,9 +38,10 @@ typedef struct map{
   coord dim;
 }map;
 
-void map_init(map_cell** this, map_cell default_fill ,coord dim);
+void map_init(map* this, map_cell default_fill ,coord dim);
+void reset_map(map* this);
 void clone_map(map_cell** src, map_cell** dest, coord dim);
 void print_map(struct map_cell** map, struct coord dim);
 _Bool check_colision(map_cell** map, coord p, char player_action);
-_Bool try_generate_fruit(map_cell ** map_p, map_cell ** map_n_p, coord dim);
-void map_destroy(map_cell** map, coord dim);
+_Bool try_generate_fruit(map* map);
+void map_destroy(map* map);

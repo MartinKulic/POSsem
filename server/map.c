@@ -5,6 +5,11 @@
 
 #include "map.h"
 
+void reset_map(map* this)
+{
+  clone_map(this->map_no_players, this->map, this->dim);
+}
+
 void clone_map(map_cell** src, map_cell** dest, coord dim)
 {
   for(size_t i = 0; i < dim.y; i++)
@@ -32,9 +37,13 @@ _Bool check_colision(map_cell** map, coord head_pos, char player_action)
   return map[head_pos.y][head_pos.x].ch != player_action;
 }
 
-_Bool try_generate_fruit(map_cell** map_p, map_cell ** map_n_p, coord dim)
+_Bool try_generate_fruit(map * this)
 {
-  for(int i = 0; i < 1000000; i++)
+  map_cell** map_p = this->map;
+  map_cell** map_n_p = this->map_no_players;
+  coord dim = this->dim;
+
+  for(int i = 0; i < 100000; i++)
   {
     size_t x = rand()%dim.x;
     size_t y = rand()%dim.y;
@@ -49,25 +58,31 @@ _Bool try_generate_fruit(map_cell** map_p, map_cell ** map_n_p, coord dim)
   return 0;
 }
 
-void map_init(map_cell** this, map_cell default_fill ,coord dim)
+void map_init(map* this, map_cell default_fill ,coord dim)
 {
-  this = malloc(dim.y * sizeof(map_cell*));//riadky
+  this->dim = dim;
+  this->map = malloc(dim.y * sizeof(map_cell*));//riadky
+  this->map_no_players = malloc(dim.y * sizeof(map_cell*));
   for(size_t i = 0; i < dim.y; i++)
   {
-    this[i] = malloc(dim.x * sizeof(map_cell));//znaky v riadkoch
-    memset(this[i], 'p', dim.x);
-    for(size_t  ii = 0; i < dim.x; i++)
+    this->map[i] = malloc(dim.x * sizeof(map_cell));//znaky v riadkoch
+    this->map_no_players[i] = malloc(dim.x * sizeof(map_cell));
+
+    for(size_t  ii = 0; ii < dim.x; ii++)
     {
-        this[i][ii] = default_fill;
+        this->map[i][ii] = default_fill;
+        this->map_no_players[i][ii] = default_fill;
     }
   }
 }
 
-void map_destroy(map_cell** this, coord dim)
+void map_destroy(map* this)
 {
-  for(size_t i = 0; i < dim.y; i++)
+  for(size_t i = 0; i < this->dim.y; i++)
   {
-    free(this[i]);
+    free(this->map[i]);
+    free(this->map_no_players[i]);
   }
-  free(this);
+  free(this->map);
+  free(this->map_no_players);
 }
