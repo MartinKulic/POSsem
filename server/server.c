@@ -310,7 +310,8 @@ void server_tick(struct server * this)
   }
 
   sll_for_each(this->players, &server_do_player_action, &this->fruit_left, this->map, NULL);
-  print_map(this->map->map, this->map->dim);
+//  print_map(this->map->map, this->map->dim);
+  
 
   printf("left %d numPl %d \n",this->fruit_left, sll_get_size(this->players));
   if(this->fruit_left < sll_get_size(this->players))
@@ -322,13 +323,16 @@ void server_tick(struct server * this)
     }
   }
 
+  char * serializedM;
+  serialize_map(this->map, &serializedM); 
   //sll_for_each(this->players, &players_check_colision_w_other_players, this->players, NULL, NULL);
-  sll_for_each(this->players, &players_check_colision_w_other_players, this->players, this->map->map, NULL);
+  sll_for_each(this->players, &players_check_colision_w_other_players_and_send_map, this->players, this->map->map, serializedM);
   pthread_mutex_unlock(this->mut_players);
 
   pthread_mutex_unlock(this->mut_map);
 
   sll_clear(&index_endedPlayers);
+  free(serializedM);
 
   
 }
@@ -468,16 +472,19 @@ void player_move(struct player* this, struct coord direction, map* map, int * fr
 	printf("\n");
 
 }
-void players_check_colision_w_other_players(void * data, void * in, void * out, void * err)
+void players_check_colision_w_other_players_and_send_map(void * data, void * in, void * out, void * err)
 {
   player * player = *(struct player**)data;
   sll * players = in;
   map_cell** map = out;
+  char * serialized_map = err;
 
   if(check_colision(map, *(coord*)player->body->head_->data_, player->action)==1)
   {
     player->action = P_GAME_END;
   }
+
+  my_send(player->fd, serialized_map);
  
 //  if(player->action != P_GAME_PAUSE)
 //  {

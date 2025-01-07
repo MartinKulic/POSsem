@@ -56,7 +56,7 @@ void server_start(struct server* this);
 void * server_connect_players(void * arg);
 void * server_logic(void * arg);
 void * player_init_a_dispache(void * arg);
-void players_check_colision_w_other_players(void * d, void * i, void * o, void * e);
+void players_check_colision_w_other_players_and_send_map(void * d, void * i, void * o, void * e);
 _Bool player_check_colision_w_other_players(struct player * this, sll * players);
 void player_move(struct player* this, struct coord direction, map* map, int * fruit_left);
 void set_players_start_at_time_to(void* data, void* in, void* out, void* err);

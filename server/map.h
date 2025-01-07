@@ -48,3 +48,5 @@ _Bool check_colision(map_cell** map, coord p, char player_action);
 _Bool try_generate_fruit(map* map);
 coord get_coord_for_new_player(map* this);
 void map_destroy(map* map);
+
+void serialize_map(map* this, char** target);

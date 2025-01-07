@@ -114,10 +114,20 @@ void * communication_task(void * arg)
 //Recievs data from server responds to them if needed
 void com_in_task(struct communication_data* data)
 {
-  char buff[STD_TRANSFER_LEN];
+  char * msg;
   printf("incoming t: ");
-  my_recv(data->client_fd, &buff[0]);
-  printf("%s\n", buff);
+  my_recv_large(data->client_fd, &msg);
+printf("%p\n", msg);
+
+  printf("%c\n", msg[0]);
+
+  switch(msg[0]){
+    case T_MAP:
+      printf("%s\n", &msg[1]);
+    break;
+  }
+
+  free(msg);
 }
 
 //Manages input from user end send them to server

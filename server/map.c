@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "map.h"
+#include "../share/com_protocol.h"
 
 void reset_map(map* this)
 {
@@ -109,4 +110,107 @@ void map_destroy(map* this)
   }
   free(this->map);
   free(this->map_no_players);
+}
+
+
+void reallocate_field(char** field, size_t* alloc_size, size_t increase)
+{
+  printf("realokujem\n");
+  (*alloc_size) = (*alloc_size)+increase;
+  (*field) = realloc(*field, *alloc_size);
+}
+void serialize_map(map* this, char** target)
+{
+  size_t index = 1;
+  size_t alocated_size = ((10+1+3)*this->dim.x*this->dim.y) + 3*this->dim.y + 2*this->dim.x; // (controlChar + char + resetChar) * rozmarMapy + timesNewLine+nocneHovadinky + hornospodneHovadimky
+  char* map_flatened = calloc(alocated_size, sizeof(char));
+  map_flatened[0] = T_MAP;
+
+  char temp[50] = {'p'};
+  size_t len_of_temp;
+
+  len_of_temp = sprintf(&map_flatened[index],"┏");
+  index += len_of_temp;
+  len_of_temp = sprintf(&temp[0], "━");
+  for(size_t i = 0; i < this->dim.x; i++)
+  {
+    if (index+len_of_temp+1>alocated_size)
+    {
+      reallocate_field(&map_flatened, &alocated_size, this->dim.x);
+    }
+    strcpy(&map_flatened[index], &temp[0]);
+    index += len_of_temp;
+  }
+  len_of_temp = sprintf(&temp[0], "┓\n");
+  if (index+len_of_temp+1>alocated_size)
+  {
+    reallocate_field(&map_flatened, &alocated_size, this->dim.x);
+  }
+  strcpy(&map_flatened[index], &temp[0]);
+  index += len_of_temp;
+
+  for(int i = 0; i < this->dim.y; i++)
+  {
+    len_of_temp = sprintf(&temp[0], "┃");
+    if (index+len_of_temp+1>alocated_size)
+    {
+      reallocate_field(&map_flatened, &alocated_size, this->dim.x);
+    }
+    strcpy(&map_flatened[index], &temp[0]);
+    index += len_of_temp;
+
+    for(int ii = 0; ii < this->dim.x; ii++)
+    {
+      map_cell mcell = this->map[i][ii];
+      if(mcell.ch == MAP_EMPTY)
+      {
+        if(index+2>alocated_size)
+        {
+          reallocate_field(&map_flatened, &alocated_size, this->dim.x);
+        }
+        
+        map_flatened[index++] = mcell.ch;
+        map_flatened[index] = '\0';
+      }
+      else{
+        //printf("%c %p", temp[0], &temp[0]);
+        len_of_temp = (sprintf(&temp[0], "%s%c%s", mcell.control, mcell.ch, RESET));// return the number of bytes printed (excluding the null byte used to end output to strings)
+        if (index+len_of_temp+1>alocated_size)
+        {
+          reallocate_field(&map_flatened, &alocated_size, this->dim.x);
+        }
+        strcpy(&map_flatened[index], &temp[0]);
+        index += len_of_temp;
+      }
+    }
+    len_of_temp = sprintf(&temp[0], "┃\n");
+    if (index+len_of_temp+1>alocated_size)
+    {
+      reallocate_field(&map_flatened, &alocated_size, this->dim.x);
+    }
+    strcpy(&map_flatened[index], &temp[0]);
+    index += len_of_temp;
+  }
+  len_of_temp = sprintf(&map_flatened[index],"┗");
+  index += len_of_temp;
+  len_of_temp = sprintf(&temp[0], "━");
+  for(size_t i = 0; i < this->dim.x; i++)
+  {
+    if (index+len_of_temp+1>alocated_size)
+    {
+      reallocate_field(&map_flatened, &alocated_size, this->dim.x);
+    }
+    strcpy(&map_flatened[index], &temp[0]);
+    index += len_of_temp;
+  }
+  if (index+len_of_temp+1>alocated_size)
+  {
+    reallocate_field(&map_flatened, &alocated_size, this->dim.x);
+  }
+  sprintf(&map_flatened[index], "┛");
+  index += len_of_temp;
+
+
+
+  *target = map_flatened;
 }
