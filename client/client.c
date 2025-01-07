@@ -17,8 +17,18 @@
 
 #define PORT 8080
 
+
+void client_init(communication_data * this)
+{
+  this->fds[0].fd = STDIN_FILENO;
+  this->fds[0].events = POLLIN;
+
+  //this->fds[1].fd = this->client_fd; //client_fd will get walue after connect_to_server
+  this->fds[1].events = POLLIN;
+}
+
 // 1 ak prebehne uspesne 
-int connect_to_server (int * client_fd, int* uniqe_identifier)
+int connect_to_server (int * client_fd, run_param * rp)
 {
 //input_data* this = argv;
   int status;
@@ -32,10 +42,10 @@ int connect_to_server (int * client_fd, int* uniqe_identifier)
   }
 
   serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(PORT);
+  serv_addr.sin_port = htons(rp->port);
 
   // convert add to bin
-  if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0)
+  if(inet_pton(AF_INET, rp->ip, &serv_addr.sin_addr)<=0)
   {
     printf("Invalid address\n");
     return 0;
@@ -54,7 +64,7 @@ int connect_to_server (int * client_fd, int* uniqe_identifier)
   if(strcmp("Plno", buff)==0){
     return 0;
   }
-
+ 
   /*int ident_but_net = htonl(*uniqe_identifier);
   send(*client_fd,(char*)&ident_but_net, 4, 0);
   
@@ -68,6 +78,8 @@ void * communication_task(void * arg)
 {
   struct communication_data* this = arg;
 
+  this->fds[1].fd = this->client_fd;
+
   struct termios oldt, newt;
   tcgetattr(0, &oldt);
   memcpy(&newt, &oldt, sizeof(struct termios));
@@ -78,19 +90,10 @@ void * communication_task(void * arg)
   //newt.c_cc[VMIN] = 1;  // minimum number of cahracters for noncanocical read
   tcsetattr(0, TCSANOW, &newt);
   //cfmakeraw();
-
-  this->fds[0].fd = STDIN_FILENO;
-  this->fds[0].events = POLLIN;
-
-  this->fds[1].fd = this->client_fd;
-  this->fds[1].events = POLLIN;
-  
-
   
   while(this->work)
   {
    // printf("enter command: ");
- 
     if (poll(this->fds,2,900)>0)
     {
       if (this->fds[0].revents & POLLIN)
@@ -102,11 +105,9 @@ void * communication_task(void * arg)
         com_in_task(this);
       }// prislo nieco zo servera
 
-    }// je 0 fd je ready
-    
-    
+    }// je 0 fd je ready 
   }
-  tcsetattr(0, TCSANOW, &oldt); 
+  tcsetattr(0, TCSANOW, &oldt);
   close(this->client_fd);
   return NULL;
 }
@@ -115,11 +116,8 @@ void * communication_task(void * arg)
 void com_in_task(struct communication_data* data)
 {
   char * msg;
-  printf("incoming t: ");
+  //printf("incoming t: ");
   my_recv_large(data->client_fd, &msg);
-printf("%p\n", msg);
-
-  printf("%c\n", msg[0]);
 
   switch(msg[0]){
     case T_MAP:
@@ -136,16 +134,16 @@ void com_out_task(struct communication_data* data)
   char ch[3];
   
   read(data->fds[0].fd, &ch[0], 1);
-  printf("%d   ", ch[0]);
+ // printf("%d   ", ch[0]);
   if(ch[0]=='\033')
   {
-    if(poll(data->fds, 1, 5)>0)
+    if(poll(data->fds, 1, 5)>0 && (data->fds[0].revents & POLLIN))
     {
       read(data->fds[0].fd, &ch[1], 1);
       if(ch[1]=='[')
       {
         char toSend[1];
-        if(poll(data->fds, 1, 5)>0)
+        if(poll(data->fds, 1, 5)>0 && (data->fds[0].revents & POLLIN))
         {
           read(data->fds[0].fd, &ch[2], 1);
           switch(ch[2])
@@ -183,24 +181,47 @@ void com_out_task(struct communication_data* data)
   }
 }
 
+
+void client_destroy(communication_data * this)
+{
+  free(this);
+}
+
 //--------------------------------------------
 
-int main (int argc, char* argv[])
-{
-  struct communication_data * cd = calloc(1, sizeof(struct communication_data));
-  cd->uniqe_identifier = 0;
+//int main (int argc, char* argv[])
+//{
+//  struct communication_data * cd = calloc(1, sizeof(struct communication_data));
+// // cd->uniqe_identifier = 0;
+//
+//  run_param rp = {"127.0.0.1", 8080, -1, 5, "", 20, 20};
+//
+//  printf("odpojeny e exit other reconect\n");
+//  while(getchar()!='e')
+//  {
+//    if (connect_to_server(&cd->client_fd, &rp) != 1)
+//    {
+//      return 2;
+//    }
+//    cd->work = 1;
+//    communication_task(cd); 
+//    printf("odpojeny esc exit other reconect\n");
+//  }
+//  free(cd);
+//  return 0;
+//}
 
-  printf("odpojeny e exit other reconect\n");
-  while(getchar()!='e')
+void client_dispache(run_param * rp)
+{
+  communication_data * this = calloc(1, sizeof(communication_data));
+  client_init(this);
+  if (connect_to_server(&this->client_fd, rp) != 1)
   {
-    if (connect_to_server(&cd->client_fd, &cd->uniqe_identifier) != 1)
-    {
-      return 2;
-    }
-    cd->work = 1;
-    communication_task(cd); 
-    printf("odpojeny esc exit other reconect\n");
+    printf("Nepodarilo sa pripojit na server!\nUisti sa, ze adresa a port su spravne.\n");
+    client_destroy(this);
+    return ;
   }
-  free(cd);
-  return 0;
+  this->work = 1;
+  communication_task(this);
+  client_destroy(this);
 }

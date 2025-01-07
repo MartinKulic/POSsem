@@ -11,12 +11,12 @@
 #include "../share/com_protocol.h"
 
 
-int server_init(struct server* this, int port)
+int server_init(struct server* this, run_param * rp)
 {
   // setup communication
   int opt = 1;
-  this->MAX_PLAYERS = 5;
-  coord MAX_MAP = (struct coord){50,25};
+  this->MAX_PLAYERS = rp->max_players;
+  coord MAX_MAP = (struct coord){rp->map_w,rp->map_h};
   //---------------------------------------
   
   if((this->server_fd=socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -33,7 +33,7 @@ int server_init(struct server* this, int port)
 
   this->address.sin_family = AF_INET;
   this->address.sin_addr.s_addr = INADDR_ANY;
-  this->address.sin_port = htons(port);
+  this->address.sin_port = htons(rp->port);
 
   if(bind(this->server_fd, (struct sockaddr*)&this->address, sizeof(this->address)) < 0)
   {
@@ -55,9 +55,16 @@ int server_init(struct server* this, int port)
   this->mut_map = calloc(1, sizeof(pthread_mutex_t));
   pthread_mutex_init(this->mut_map, NULL);
   
-  this->map = calloc(1, sizeof(struct map));
-  map_init(this->map, EMPTY_CELL, MAX_MAP);
-
+  if(rp->path_to_map[0] == '\0')
+  {
+    this->map = calloc(1, sizeof(struct map));
+    map_init(this->map, EMPTY_CELL, MAX_MAP);
+  }
+  else
+  {
+    // read file and create map acord
+    // Martin dont forget to set this->map->dim
+  }
 //  this->map->map_no_players[10][10] = BLOCK_CELL;
 //  this->map->map_no_players[10][11] = BLOCK_CELL;
 //  this->map->map_no_players[11][10] = BLOCK_CELL;
@@ -66,6 +73,10 @@ int server_init(struct server* this, int port)
 //  this->map->map_no_players[10][8] = BLOCK_CELL;
 
   this->fruit_left=0;
+
+  this->time_start = time(NULL);
+  this->time_duration = rp->game_time;
+
   printf("map_no_players: \n");
   print_map(this->map->map_no_players, this->map->dim);
 
@@ -313,10 +324,10 @@ void server_tick(struct server * this)
 //  print_map(this->map->map, this->map->dim);
   
 
-  printf("left %d numPl %d \n",this->fruit_left, sll_get_size(this->players));
+//  printf("left %d numPl %d \n",this->fruit_left, sll_get_size(this->players));
   if(this->fruit_left < sll_get_size(this->players))
   {
-    printf("generating new fruit\n");
+ //   printf("generating new fruit\n");
     if(try_generate_fruit(this->map)==1)
     {
       this->fruit_left++;
@@ -342,7 +353,7 @@ void server_ack_player_next_action(void * data, void * in, void * out, void * er
   struct player * player = *(struct player **) data;
   int * index = (int *)in;
   
-  printf("\tplayer-%d-i>%d-na> %c -a> %c\n", player->id, *index, player->next_action, player->action);
+  //printf("\tplayer-%d-i>%d-na> %c -a> %c\n", player->id, *index, player->next_action, player->action);
  
   pthread_mutex_lock(&player->mut_action);
   switch (player->next_action){
@@ -398,7 +409,12 @@ void server_do_player_action(void * data, void * in, void * out, void * err)
   map * map = out;
   int * fruit_left = (int *) in;
 
-  printf("plr action %c\n", player->action);
+  //printf("plr action %c\n", player->action);
+
+ // if(player->start_move_at < time(NULL))
+ // {
+ //   player_move(player, (struct coord){0, 0}, map, fruit_left);
+ // }
     
   switch (player->action)
   {
@@ -432,7 +448,7 @@ void player_move(struct player* this, struct coord direction, map* map, int * fr
   headData->x = new_x < 0 ? map->dim.x-1 : new_x % map->dim.x;
   headData->y = new_y < 0 ? map->dim.y-1 : new_y % map->dim.y;
 
-  printf("p %d ( %d ; %d )", this->id, headData->x, headData->y);
+  //printf("p %d ( %d ; %d )", this->id, headData->x, headData->y);
 
   
   if (map->map[headData->y][headData->x].ch == FRUIT_CH)
@@ -457,13 +473,13 @@ void player_move(struct player* this, struct coord direction, map* map, int * fr
     prev_position = helper;
 
     map->map[((struct coord*)(node->data_))->y][((struct coord*)(node->data_))->x] = (struct map_cell){SNAKE_BODY_CH,this->colour};
-    printf(" -> ( %d ; %d )", ((struct coord*)(node->data_))->x, ((struct coord*)(node->data_))->y);
+   // printf(" -> ( %d ; %d )", ((struct coord*)(node->data_))->x, ((struct coord*)(node->data_))->y);
 
 		node = node->next_;
 	}
 
   _Bool re =check_colision(map->map, *(struct coord*)this->body->head_->data_, this->action);
-  printf("res %d,\n",re);
+  //printf("res %d,\n",re);
   if(re==1)//sam do seba pripadne do inych hadov
   {
     this->action = P_GAME_END;
@@ -547,13 +563,22 @@ void server_destroy(struct server * this)
 
 }
 //--------------------------------------
-int main (int argc, char* argv[])
+//int main (int argc, char* argv[])
+//{
+//  struct server s;
+//  struct run_param rp = {"127.0.0.1", 8080, -1, 5, "", 20, 20};
+//  server_init(&s, &rp);
+//  printf("server initialized\n");
+//  server_start(&s);
+//  printf("server ended\n");
+//  server_destroy(&s);
+//}
+
+void server_dispache(run_param * rp)
 {
   struct server s;
-  server_init(&s, PORT);
-  printf("server initialized\n");
+  server_init(&s, rp);
   server_start(&s);
-  printf("server ended\n");
   server_destroy(&s);
-
 }
+

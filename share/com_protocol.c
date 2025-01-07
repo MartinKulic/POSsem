@@ -2,6 +2,8 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 
+#include <stdio.h>
+
 #include "com_protocol.h"
 
 
