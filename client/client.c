@@ -55,7 +55,7 @@ int connect_to_server (int * client_fd, run_param * rp)
 
   if ((status = connect(*client_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr))) < 0)
   {
-    printf("\033[31mConnection fail\033[0m\n");
+    printf("\033[1;31mConnection fail\033[0m\n");
     return 0;
   }
   printf("\033[1;4;32mConnected\033[0m\n", *client_fd, status);
