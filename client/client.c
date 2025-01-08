@@ -20,6 +20,8 @@
 
 void client_init(communication_data * this)
 {
+  this->client_fd = -1;
+
   this->fds[0].fd = STDIN_FILENO;
   this->fds[0].events = POLLIN;
 
@@ -90,6 +92,8 @@ void * communication_task(void * arg)
   //newt.c_cc[VMIN] = 1;  // minimum number of cahracters for noncanocical read
   tcsetattr(0, TCSANOW, &newt);
   //cfmakeraw();
+
+  send(this->client_fd, "u", 1, 0);
   
   while(this->work)
   {
@@ -108,7 +112,6 @@ void * communication_task(void * arg)
     }// je 0 fd je ready 
   }
   tcsetattr(0, TCSANOW, &oldt);
-  close(this->client_fd);
   return NULL;
 }
 
@@ -169,21 +172,21 @@ void com_out_task(struct communication_data* data)
     else// nie je 2. char
     {
       printf("esc\n");
-      send(data->client_fd, "q", 1, 0);
+      send(data->client_fd, "p", 1, 0);
       data->work = 0;
     }
   }// 1. char je 27 - \033
-  else if (ch[0]=='e')
-  {
-    printf("esc\n");
-    send(data->client_fd, "q", 1, 0);
-    data->work = 0;
-  }
+ 
 }
 
 
 void client_destroy(communication_data * this)
 {
+  if(this->client_fd > 0)
+  { 
+    send(this->client_fd, "q", 1, 0);
+    close(this->client_fd);
+  }
   free(this);
 }
 
@@ -217,7 +220,7 @@ void client_dispache(run_param * rp)
   client_init(this);
   if (connect_to_server(&this->client_fd, rp) != 1)
   {
-    printf("Nepodarilo sa pripojit na server!\nUisti sa, ze adresa a port su spravne.\n");
+    printf("\033[1;5;30;41mNepodarilo sa pripojit na server!\033[0m\n\033[3;37mUisti sa, ze adresa a port su spravne.\033[0m\n");
     client_destroy(this);
     return ;
   }

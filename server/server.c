@@ -77,8 +77,8 @@ int server_init(struct server* this, run_param * rp)
   this->time_start = time(NULL);
   this->time_duration = rp->game_time;
 
-  printf("map_no_players: \n");
-  print_map(this->map->map_no_players, this->map->dim);
+//  printf("map_no_players: \n");
+//  print_map(this->map->map_no_players, this->map->dim);
 
   srand(time(NULL));
  
@@ -109,12 +109,12 @@ void * server_connect_players(void * arg)
         new_player->fd = accept(this->server_fd, (struct sockaddr*)&this->address, &addrlen);
         if(new_player->fd < 0)
         {
-          printf("failed to make new socket\n");
+          //printf("failed to make new socket\n");
           continue;
         }
         if(sll_get_size(this->players) > this->MAX_PLAYERS)
         {
-          printf("novy hrac ale je plno\n");
+          //printf("novy hrac ale je plno\n");
           char * msg = "Plno";
           my_send(new_player->fd, msg);
        //   int conv_next_msg_size = htonl(strlen(msg));
@@ -123,7 +123,7 @@ void * server_connect_players(void * arg)
           close(new_player->fd);
           continue;
         }
-        printf("Novy hrac %d\n", new_player->fd);
+        //printf("Novy hrac %d\n", new_player->fd);
         struct ser_pla* sp = calloc(1, sizeof(ser_pla));//{new_player, this};
         sp->player = new_player; //uvolni sa v player_init_a_dispache
         sp->server = this;
@@ -132,7 +132,7 @@ void * server_connect_players(void * arg)
         
       }else
       {
-        printf("prisiel event ale nie POLL IN\n");
+        //printf("prisiel event ale nie POLL IN\n");
         continue;
 
       }
@@ -144,7 +144,7 @@ void set_players_start_at_time_to(void* data, void* in, void* out, void* err)
 {
   player * p = *(player**)data;
   time_t * st = in;
-  p->start_move_at = *st;
+  p->start_move_at = *st+TIME_UNPAUSE;
 }
 void * player_init_a_dispache(void * arg)
 {
@@ -156,7 +156,7 @@ void * player_init_a_dispache(void * arg)
   
   pthread_mutex_init(&player->mut_action, NULL);
   player->id = player->fd;
-  printf("new player %d created\n", player->id);
+  //printf("new player %d created\n", player->id);
 
   //char * msg = "OK";
   my_send(player->fd, "OK");
@@ -192,6 +192,7 @@ void * player_init_a_dispache(void * arg)
 
   player->action = newPos.x <= server->map->dim.x ? '>' : '<';
   player->next_action = newPos.x <= server->map->dim.x ? '>' : '<'; // netreba mutexovat lebo player_in_task este nebezi
+  player->prev_direction = player->action;
   player->work = 1;
 
   pthread_mutex_lock(server->mut_players);
@@ -218,7 +219,6 @@ void player_in_task(struct player * this)
       {
         char n_a[1];
         recv(this->fd, &n_a, 1, 0);
-
         pthread_mutex_lock(&this->mut_action);
         this->next_action = *n_a == 0 ? P_GAME_QUIT : *n_a; // ak primeme 0 najskor doslo k chybe
         pthread_mutex_unlock(&this->mut_action);
@@ -238,7 +238,7 @@ void destroy_player(void * data, void * in, void * out, void * err)
 { 
   struct player * this = *(struct player **)data;
   //printf("destroy player %d a %p\n", this->fd, this);   
-  printf("destroing player %d", this->id);
+  //printf("destroing player %d", this->id);
   this->work = 0;
   pthread_join(this->thread, NULL);
   pthread_mutex_destroy(&this->mut_action);
@@ -284,7 +284,7 @@ void* server_logic(void*arg)
       {
         this->work = 0;
       }
-      printf("no players for %d s\n", (curr_time - no_player_time_start));
+    //  printf("no players for %d s\n", (curr_time - no_player_time_start));
       
     }
     else
@@ -353,7 +353,7 @@ void server_ack_player_next_action(void * data, void * in, void * out, void * er
   struct player * player = *(struct player **) data;
   int * index = (int *)in;
   
-  //printf("\tplayer-%d-i>%d-na> %c -a> %c\n", player->id, *index, player->next_action, player->action);
+  //printf("\tplayer-%d-i>%d-na> %c -a> %c -pd> %c \n", player->id, *index, player->next_action, player->action, player->prev_direction);
  
   pthread_mutex_lock(&player->mut_action);
   switch (player->next_action){
@@ -365,24 +365,30 @@ void server_ack_player_next_action(void * data, void * in, void * out, void * er
       return ;
     break;
     case P_GAME_PAUSE:
-
+      if(player->action != P_GAME_PAUSE){
+      player->prev_direction = player->action;
+      }
+    break;
+    case P_GAME_UPAUSE:
+      player->next_action = player->prev_direction;
     break;
     case P_GAME_END:
       *index = *index+1;
       return ;
     break;
   }
+
   switch(player->action)
   {
     case P_GAME_END:
       *index = *index+1;
       pthread_mutex_unlock(&player->mut_action);
-      return ;
-      break;
-      case P_GAME_PAUSE:
-        if(player->next_action =! P_GAME_PAUSE){
-          player->start_move_at = time(NULL)+3;
-        }
+    return ;
+    break;
+    case P_GAME_PAUSE:
+      if(player->next_action != P_GAME_PAUSE){
+        player->start_move_at = time(NULL)+3;
+      }
   }
   pthread_mutex_unlock(&player->mut_action);
 
@@ -409,12 +415,14 @@ void server_do_player_action(void * data, void * in, void * out, void * err)
   map * map = out;
   int * fruit_left = (int *) in;
 
-  //printf("plr action %c\n", player->action);
+ // printf("plr action %c\n", player->action);
 
- // if(player->start_move_at < time(NULL))
- // {
- //   player_move(player, (struct coord){0, 0}, map, fruit_left);
- // }
+  //printf("%d %d\n", player->start_move_at, time(NULL));
+  if(player->start_move_at > time(NULL))
+  {  
+    player_dont_move(player, map);
+    return ;
+  }
     
   switch (player->action)
   {
@@ -431,7 +439,7 @@ void server_do_player_action(void * data, void * in, void * out, void * err)
       player_move(player, (struct coord){1, 0}, map, fruit_left);
     break;
     case P_GAME_PAUSE:
-      player_move(player, (struct coord){0, 0}, map, fruit_left);
+      player_dont_move(player, map);
     break;
   }
   
@@ -484,10 +492,25 @@ void player_move(struct player* this, struct coord direction, map* map, int * fr
   {
     this->action = P_GAME_END;
   }
+}
 
-	printf("\n");
+void player_dont_move(player * this, map * map)
+{
+  printf("p dont move\n");
+  sll_node* node = this->body->head_;
+  map->map[((struct coord*)(node->data_))->y][((struct coord*)(node->data_))->x] = (struct map_cell){this->action,this->colour};
+  node = node->next_;
+  while(node != NULL)
+	{
+    map->map[((struct coord*)(node->data_))->y][((struct coord*)(node->data_))->x] = (struct map_cell){SNAKE_BODY_CH,this->colour};
+   // printf(" -> ( %d ; %d )", ((struct coord*)(node->data_))->x, ((struct coord*)(node->data_))->y);
+
+		node = node->next_;
+	}
+
 
 }
+
 void players_check_colision_w_other_players_and_send_map(void * data, void * in, void * out, void * err)
 {
   player * player = *(struct player**)data;
@@ -495,9 +518,12 @@ void players_check_colision_w_other_players_and_send_map(void * data, void * in,
   map_cell** map = out;
   char * serialized_map = err;
 
-  if(check_colision(map, *(coord*)player->body->head_->data_, player->action)==1)
+  if(player->action != P_GAME_PAUSE)
   {
-    player->action = P_GAME_END;
+    if(check_colision(map, *(coord*)player->body->head_->data_, player->action)==1)
+    {
+      player->action = P_GAME_END;
+    }
   }
 
   my_send(player->fd, serialized_map);
@@ -540,7 +566,7 @@ _Bool player_check_colision_w_other_players(player * this, sll * players)
 void remove_player_from_players(void * data, void * in, void * out, void * err)
 {
   int index = *(int *)data;
-  printf("removing player at %d\n", index);
+  //printf("removing player at %d\n", index);
   sll * players = in;
   sll_remove(players, index);
 }

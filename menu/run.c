@@ -160,7 +160,48 @@ void connect_to_game(run_param * rp)
 }
 void do_client_stuff(run_param * rp)
 {
-  client_dispache(rp);
+  //client_dispache(rp);
+  _Bool not_ended = 1;
+  communication_data * this = calloc(1, sizeof(communication_data));
+  client_init(this);
+  if (connect_to_server(&this->client_fd, rp) != 1)
+  {
+    printf("\033[1;5;30;41mNepodarilo sa pripojit na server!\033[0m\n\033[3;37mUisti sa, ze adresa a port su spravne.\033[0m\n");
+    this->client_fd = -1;
+    client_destroy(this);
+    return ;
+  }
+  while(not_ended)
+  {
+    this->work = 1;
+    communication_task(this);
+    not_ended = pause_menu();
+  }
+  client_destroy(this);
+}
+
+_Bool pause_menu()
+{
+  printf("\033[3;37mPaused\033[0m\n");
+  printf("\033[1m1\033[0m - \033[4mPokracovat\033[0m\n\033[1m2\033[0m - \033[4mUkonncit\033[0m\n");
+  
+  char ch;
+  while(1)
+  {
+    ch = get_single_char();
+    switch(ch)
+    {
+      case '1':
+        return 1;
+      break;
+      case '2':
+        return 0;
+      break;
+      default:
+        printf("\n\033[1;37;31mNerozpoznana volba\033[0m\n");
+      break;
+    }
+  }
 }
 
 char get_single_char()
@@ -248,7 +289,7 @@ _Bool do_editable_thing(char * popis, char * d_value, size_t val_buff_size)
 
 void print_menu()
 {
-  printf("1 - Nova Hra\n2 - Pripojit k hre\n3 - Koniec\n");
+  printf("\033[1m1\033[0m - \033[4mNova Hra\033[1;24m\n2\033[0m - \033[4mPripojit k hre\033[1;24m\n3\033[0m - \033[4mKoniec\033[0m\n");
 }
 
 int main(int argc, char *argv[])

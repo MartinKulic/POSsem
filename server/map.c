@@ -191,6 +191,11 @@ void serialize_map(map* this, char** target)
     strcpy(&map_flatened[index], &temp[0]);
     index += len_of_temp;
   }
+  
+  if (index+len_of_temp+1>alocated_size)
+    {
+      reallocate_field(&map_flatened, &alocated_size, this->dim.x);
+    }
   len_of_temp = sprintf(&map_flatened[index],"┗");
   index += len_of_temp;
   len_of_temp = sprintf(&temp[0], "━");

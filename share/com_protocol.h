@@ -12,6 +12,12 @@
 #define T_PL   'p'
 #define T_TIME 't'
 
+#define P_GAME_END 'e'
+#define P_GAME_QUIT 'q'
+#define P_GAME_PAUSE 'p'
+#define P_GAME_UPAUSE 'u'
+#define P_NEW_PLAYER 'n'
+
 typedef struct serialized_game_frame{
   uint32_t map_h;
   uint32_t map_w;

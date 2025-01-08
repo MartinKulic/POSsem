@@ -10,5 +10,6 @@ void make_new_game(run_param * rp);
 void do_server_stuff(run_param * rp);
 void connect_to_game(run_param * rp);
 void do_client_stuff(run_param * rp);
+_Bool pause_menu();
 
 int main(int argc, char *argv[]);
