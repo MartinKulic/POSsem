@@ -100,6 +100,53 @@ void map_init(map* this, map_cell default_fill ,coord dim)
     }
   }
 }
+_Bool map_init_from_file(map* this, char* path_to_file)
+{
+  FILE * file = fopen(path_to_file, "r");
+  if (file == NULL)
+  {
+    printf("\033[1;91mSubor s mapou nenajdeny\033[0m\n");
+    return 0;
+  }
+
+  int x, y;
+  x = y = -1;
+  fscanf(file, "%d %d", &x, &y);
+
+  if (x < MIN_MAP || y < MIN_MAP || x > MAX_MAP || y > MAX_MAP)
+  {
+    printf("\033[91Nespravny format alebo mapa ma nepodporovanu velkost\033[0m\n");
+    fclose(file);
+    return 0;
+  }
+
+  this->dim.x = x;
+  this->dim.y = y;
+  
+  this->map = malloc(y * sizeof(map_cell*));//riadky
+  this->map_no_players = malloc(y * sizeof(map_cell*));
+
+  char ch;
+  for (int i = 0; i < y; i++)
+  {
+    this->map[i] = malloc(x * sizeof(map_cell));//znaky v riadkoch
+    this->map_no_players[i] = malloc(x * sizeof(map_cell));
+    for(int ii = 0; ii < x; ii++)
+    {
+      ch = fgetc(file);
+      if(ch == '\n')
+      {
+        ii--;
+        continue;
+      }
+      this->map[i][ii] = ch == MAP_EMPTY ? EMPTY_CELL : BLOCK_CELL;
+      this->map_no_players[i][ii] = this->map[i][ii];
+    }
+  }
+
+  fclose(file);
+  return 1;
+}
 
 void map_destroy(map* this)
 {

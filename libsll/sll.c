@@ -144,6 +144,10 @@ _Bool sll_insert (sll* this, size_t index, void* data, size_t size)
 
 void sll_for_each (sll* this, void(*process_item)(void*, void*, void*, void*), void* in, void* out, void*err)
 {
+	if (this->head_ == NULL)
+	{
+		return;
+	}
 	sll_node* node = this->head_;
 	while(node != NULL)
 	{

@@ -39,7 +39,7 @@ int connect_to_server (int * client_fd, run_param * rp)
 
   if((*client_fd=socket(AF_INET, SOCK_STREAM, 0)) < 0)
   {
-    printf("Socket creation error \n");
+    printf("\033[31mSocket creation error\033[0m \n");
     return 0;
   }
 
@@ -49,21 +49,22 @@ int connect_to_server (int * client_fd, run_param * rp)
   // convert add to bin
   if(inet_pton(AF_INET, rp->ip, &serv_addr.sin_addr)<=0)
   {
-    printf("Invalid address\n");
+    printf("\033[31mInvalid address\033[0m\n");
     return 0;
   }
 
   if ((status = connect(*client_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr))) < 0)
   {
-    printf("Connection fail\n");
+    printf("\033[31mConnection fail\033[0m\n");
     return 0;
   }
-  printf("connected %d %d\n", *client_fd, status);
+  printf("\033[1;4;32mConnected\033[0m\n", *client_fd, status);
   char buff[STD_TRANSFER_LEN] = {0};
   my_recv(*client_fd, &buff[0]);
   printf("%s\n", buff);
 
   if(strcmp("Plno", buff)==0){
+    printf("\033[31mServer je plny\033[0m\n");
     return 0;
   }
  

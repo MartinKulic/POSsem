@@ -13,21 +13,51 @@
 
 int server_init(struct server* this, run_param * rp)
 {
-  // setup communication
-  int opt = 1;
+  // setup other
   this->MAX_PLAYERS = rp->max_players;
-  coord MAX_MAP = (struct coord){rp->map_w,rp->map_h};
-  //---------------------------------------
+  coord max_map = (struct coord){rp->map_w,rp->map_h};
+
+  this->players = calloc(1, sizeof(struct sll));
+  sll_init(this->players, sizeof(struct player **));
+  this->mut_players = calloc(1, sizeof(pthread_mutex_t));
+  pthread_mutex_init(this->mut_players, NULL);
+  this->mut_map = calloc(1, sizeof(pthread_mutex_t));
+  pthread_mutex_init(this->mut_map, NULL);
   
+  this->map = calloc(1, sizeof(struct map));
+  if(rp->path_to_map[0] == '\0')
+  {
+    map_init(this->map, EMPTY_CELL, max_map);
+  }
+  else
+  {
+    if (map_init_from_file(this->map, rp->path_to_map) != 1)
+    {
+      this->map->dim = (coord){-1,-1};
+      return 0;
+    }
+  
+  }
+
+  this->fruit_left=0;
+
+  this->time_start = time(NULL);
+  this->time_duration = rp->game_time;
+
+  srand(time(NULL));
+  //---------------------------------------
+   // setup communication
+  int opt = 1;
+
   if((this->server_fd=socket(AF_INET, SOCK_STREAM, 0)) < 0)
   {
-    perror("socket failed");
+    perror("\033[91msocket failed\033[0m");
     return 0;
   }
 
   if(setsockopt(this->server_fd, SOL_SOCKET, SO_REUSEADDR/* | SO_REUSEPORT*/, &opt, sizeof(opt)))
   {
-    perror("setsockopt failde");
+    perror("\033[91setsockopt failde\033[0m");
     return 0;
   }
 
@@ -37,50 +67,17 @@ int server_init(struct server* this, run_param * rp)
 
   if(bind(this->server_fd, (struct sockaddr*)&this->address, sizeof(this->address)) < 0)
   {
-    perror("bind failed");
+    perror("\033[91bind failed\033[0m");
     return 0;
   }
 
   if(listen(this->server_fd, this->MAX_PLAYERS) < 0)
   {
-    perror("puting socket to pasive mode failed");
+    perror("\033[91puting socket to pasive mode failed\033[0m");
     return 0;
   }
   //---------------------------------------
-  //setup other
-  this->players = calloc(1, sizeof(struct sll));
-  sll_init(this->players, sizeof(struct player **));
-  this->mut_players = calloc(1, sizeof(pthread_mutex_t));
-  pthread_mutex_init(this->mut_players, NULL);
-  this->mut_map = calloc(1, sizeof(pthread_mutex_t));
-  pthread_mutex_init(this->mut_map, NULL);
   
-  if(rp->path_to_map[0] == '\0')
-  {
-    this->map = calloc(1, sizeof(struct map));
-    map_init(this->map, EMPTY_CELL, MAX_MAP);
-  }
-  else
-  {
-    // read file and create map acord
-    // Martin dont forget to set this->map->dim
-  }
-//  this->map->map_no_players[10][10] = BLOCK_CELL;
-//  this->map->map_no_players[10][11] = BLOCK_CELL;
-//  this->map->map_no_players[11][10] = BLOCK_CELL;
-//  this->map->map_no_players[11][11] = BLOCK_CELL;
-
-//  this->map->map_no_players[10][8] = BLOCK_CELL;
-
-  this->fruit_left=0;
-
-  this->time_start = time(NULL);
-  this->time_duration = rp->game_time;
-
-//  printf("map_no_players: \n");
-//  print_map(this->map->map_no_players, this->map->dim);
-
-  srand(time(NULL));
  
   return 1;
 }
@@ -317,7 +314,7 @@ void server_tick(struct server * this)
   sll_init(&index_endedPlayers, sizeof(int));
   int index = 0;
 
-  //clone_map(this->map_no_players, this->map, this->MAX_MAP);
+  //clone_map(this->map_no_players, this->map, this->max_map);
   pthread_mutex_lock(this->mut_map);
 
   reset_map(this->map);
@@ -611,7 +608,8 @@ void server_destroy(struct server * this)
   sll_clear(this->players);
   free(this->players);
 
-  map_destroy(this->map);
+  if (this->map->dim.x != -1)
+  { map_destroy(this->map); }
   free(this->map);
 
 }
@@ -630,7 +628,12 @@ void server_destroy(struct server * this)
 void server_dispache(run_param * rp)
 {
   struct server s;
-  server_init(&s, rp);
+  if (server_init(&s, rp)!=1)
+  {
+    printf("\033[1;5;30;101mNepoderilo sa vytvorit server\033[0m\n");
+    server_destroy(&s);
+    return;
+  }
   server_start(&s);
   server_destroy(&s);
 }

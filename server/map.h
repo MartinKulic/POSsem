@@ -23,6 +23,8 @@
 #define EMPTY_CELL (struct map_cell){MAP_EMPTY, RESET}
 
 // min mapa 9x9
+#define MIN_MAP 9
+#define MAX_MAP 800
 
 typedef struct coord{
   int x;
@@ -41,6 +43,7 @@ typedef struct map{
 }map;
 
 void map_init(map* this, map_cell default_fill ,coord dim);
+_Bool map_init_from_file(map* this, char* path_to_file);
 void reset_map(map* this);
 void clone_map(map_cell** src, map_cell** dest, coord dim);
 void print_map(struct map_cell** map, struct coord dim);
