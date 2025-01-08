@@ -18,7 +18,6 @@ int loop()
   char ipadd[IP_BUFF_SIZE] = "127.0.0.1";
   char ptm[PATH_T_MAP_BUFF_SIZE] = "";
   run_param run_param = {&ipadd[0], 8080, -1, 5, &ptm[0], 50, 25};
-  printf("VYTAJ %p\n", &ipadd[0]);
   while (work)
   {
     print_menu();
@@ -192,7 +191,7 @@ void do_client_stuff(run_param * rp)
 
 _Bool pause_menu()
 {
-  printf("\033[3;37mPaused\033[0m\n");
+  printf("\033[3;37mPaused ⏸\033[0m\n");
   printf("\033[1m1\033[0m - \033[4mPokracovat\033[0m\n\033[1m2\033[0m - \033[4mUkonncit\033[0m\n");
   
   char ch;
@@ -299,7 +298,7 @@ _Bool do_editable_thing(char * popis, char * d_value, size_t val_buff_size)
 
 void print_menu()
 {
-  printf("\033[1m1\033[0m - \033[4mNova Hra\033[1;24m\n2\033[0m - \033[4mPripojit k hre\033[1;24m\n3\033[0m - \033[4mKoniec\033[0m\n");
+  printf("\n\033[1;31m∿∿∿∿\033[32m∿∿∿∿\033[33m∿∿∿∿\033[34m∿∿∿∿\033[35m∿∿∿∿\033[36m∿∿∿∿\033[37m∿∿∿⊃\033[91m≺\033[0m\n\033[1m1\033[0m - \033[4mNova Hra\033[1;24m\n2\033[0m - \033[4mPripojit k hre\033[1;24m\n3\033[0m - \033[4mKoniec\033[0m\n");
 }
 
 int main(int argc, char *argv[])
