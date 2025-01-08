@@ -14,9 +14,11 @@
 int loop()
 {
   _Bool work = 1;
-  run_param_all_char run_p_all_char = {"127.0.0.1", "8080", "", ""};
-  run_param run_param = {&run_p_all_char.ip[0], 8080, -1, 5, &run_p_all_char.path_to_map[0], 50, 25};
-  printf("VYTAJ\n");
+  //run_param_all_char run_p_all_char = {"127.0.0.1", "8080", "", ""};
+  char ipadd[IP_BUFF_SIZE] = "127.0.0.1";
+  char ptm[PATH_T_MAP_BUFF_SIZE] = "";
+  run_param run_param = {&ipadd[0], 8080, -1, 5, &ptm[0], 50, 25};
+  printf("VYTAJ %p\n", &ipadd[0]);
   while (work)
   {
     print_menu();
@@ -43,7 +45,8 @@ int loop()
 void make_new_game(run_param * rp)
 {
   int next = 1;
-  rp->ip = "127.0.0.1";
+  //rp->ip = "127.0.0.1";
+  strcpy(rp->ip, "127.0.0.1");
   char temp[INT32_BUFF_SIZE];
   int tmpint;
 
