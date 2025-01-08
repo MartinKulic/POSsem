@@ -9,8 +9,8 @@
 #define STD_TRANSFER_LEN 10
 
 #define T_MAP  'm'
-#define T_PL   'p'
-#define T_TIME 't'
+#define T_PL_T 'p'
+#define T_FRAME 'f'
 
 #define P_GAME_END 'e'
 #define P_GAME_QUIT 'q'

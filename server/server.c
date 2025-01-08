@@ -345,15 +345,23 @@ void server_tick(struct server * this)
   }
 
   char * serializedM;
-  serialize_map(this->map, &serializedM); 
-  //sll_for_each(this->players, &players_check_colision_w_other_players, this->players, NULL, NULL);
-  sll_for_each(this->players, &players_check_colision_w_other_players_and_send_map, this->players, this->map->map, serializedM);
+  size_t aloc_map = serialize_map(this->map, &serializedM);
+  char * serialized_P;
+  serialize_players(this->players, time(NULL)-this->time_start, &serialized_P);
+  //printf("%s\n",serialized_P);
+  size_t len_of_pl = strlen(serialized_P);
+  char* frame = realloc(serialized_P, aloc_map);
+  sprintf(&frame[len_of_pl], "%s", serializedM);
+  //printf("%s\n", frame);
+ // sll_for_each(this->players, &players_check_colision_w_other_players, this->players, NULL, NULL);
+  sll_for_each(this->players, &players_check_colision_w_other_players_and_send_map, this->players, this->map->map, frame);
   pthread_mutex_unlock(this->mut_players);
 
   pthread_mutex_unlock(this->mut_map);
 
   sll_clear(&index_endedPlayers);
   free(serializedM);
+  free(frame);
 
   
 }
@@ -526,7 +534,7 @@ void players_check_colision_w_other_players_and_send_map(void * data, void * in,
   player * player = *(struct player**)data;
   sll * players = in;
   map_cell** map = out;
-  char * serialized_map = err;
+  char * serialized_frame = err;
 
   if(player->action != P_GAME_PAUSE)
   {
@@ -536,7 +544,7 @@ void players_check_colision_w_other_players_and_send_map(void * data, void * in,
     }
   }
 
-  my_send(player->fd, serialized_map);
+  my_send(player->fd, serialized_frame);
  
 //  if(player->action != P_GAME_PAUSE)
 //  {

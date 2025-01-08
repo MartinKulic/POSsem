@@ -49,4 +49,4 @@ _Bool try_generate_fruit(map* map);
 coord get_coord_for_new_player(map* this);
 void map_destroy(map* map);
 
-void serialize_map(map* this, char** target);
+size_t serialize_map(map* this, char** target);

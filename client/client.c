@@ -121,10 +121,9 @@ void com_in_task(struct communication_data* data)
   char * msg;
   //printf("incoming t: ");
   my_recv_large(data->client_fd, &msg);
-
   switch(msg[0]){
-    case T_MAP:
-      printf("%s\n", &msg[1]);
+    case T_FRAME:
+      printf("\e[1;1H\e[2J%s\n", &msg[1]);
     break;
     case 'e':
       data->work = 2;

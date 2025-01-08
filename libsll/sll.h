@@ -1,5 +1,12 @@
 // sll.h
+
+#pragma once
+
 #include <stddef.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 typedef struct sll_node {
 	struct sll_node* next_;
 	void* data_;

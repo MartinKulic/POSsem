@@ -11,6 +11,7 @@
 #include "../share/com_protocol.h"
 #include "../share/run_param.h"
 #include "map.h"
+#include "player.h"
 
 //#define PORT 8080
 #define NO_ACTIVY_SERVER_END 10 //10 sekund
@@ -19,20 +20,7 @@
 
 
 
-typedef struct player{
-  int id;
-  int fd;
-  int scor;
-  char prev_direction;
-  char action;
-  char next_action;
-  atomic_bool work;
-  pthread_mutex_t mut_action;
-  pthread_t thread;
-  char * colour;
-  struct sll * body;
-  time_t start_move_at;
-}player;
+
 
 typedef struct server {
   struct sll* players;

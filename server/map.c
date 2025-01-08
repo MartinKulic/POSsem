@@ -119,12 +119,13 @@ void reallocate_field(char** field, size_t* alloc_size, size_t increase)
   (*alloc_size) = (*alloc_size)+increase;
   (*field) = realloc(*field, *alloc_size);
 }
-void serialize_map(map* this, char** target)
+size_t serialize_map(map* this, char** target)
 {
-  size_t index = 1;
+  size_t index = 0;
   size_t alocated_size = ((10+1+3)*this->dim.x*this->dim.y) + 3*this->dim.y + 2*this->dim.x; // (controlChar + char + resetChar) * rozmarMapy + timesNewLine+nocneHovadinky + hornospodneHovadimky
   char* map_flatened = calloc(alocated_size, sizeof(char));
-  map_flatened[0] = T_MAP;
+  //map_flatened[0] = T_MAP;
+  //map_flatened[0] = '\n';
 
   char temp[50] = {'p'};
   size_t len_of_temp;
@@ -191,12 +192,12 @@ void serialize_map(map* this, char** target)
     strcpy(&map_flatened[index], &temp[0]);
     index += len_of_temp;
   }
-  
+  len_of_temp = sprintf(&temp[0], "┗");
   if (index+len_of_temp+1>alocated_size)
     {
       reallocate_field(&map_flatened, &alocated_size, this->dim.x);
     }
-  len_of_temp = sprintf(&map_flatened[index],"┗");
+  sprintf(&map_flatened[index],&temp[0]);
   index += len_of_temp;
   len_of_temp = sprintf(&temp[0], "━");
   for(size_t i = 0; i < this->dim.x; i++)
@@ -215,7 +216,7 @@ void serialize_map(map* this, char** target)
   sprintf(&map_flatened[index], "┛");
   index += len_of_temp;
 
-
-
   *target = map_flatened;
+
+  return alocated_size;
 }
