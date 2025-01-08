@@ -65,7 +65,7 @@ void make_new_game(run_param * rp)
       break;
       case 3:
         sprintf(&temp[0], "%d", rp->max_players);
-        next = do_editable_thing("Maximalny pocet pripojenych hracov: ", &temp[0], INT32_BUFF_SIZE);
+        next = do_editable_thing("Maximalny pocet pripojenych hracov: ", &temp[0], INT32_BUFF_SIZE) ? next-1 : next+1;
         rp->max_players = atoi(&temp[0]);
       break;
       case 4:
@@ -175,7 +175,15 @@ void do_client_stuff(run_param * rp)
   {
     this->work = 1;
     communication_task(this);
-    not_ended = pause_menu();
+    if(this->work != 2) //server did not ended
+    {
+      not_ended = pause_menu();
+    }
+    else
+    {
+      printf("Game ended\n");
+      not_ended = 0;
+    }
   }
   client_destroy(this);
 }

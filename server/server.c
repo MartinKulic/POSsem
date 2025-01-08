@@ -272,6 +272,13 @@ void* server_logic(void*arg)
   time_t curr_time;
   while (this->work)
   {
+    //printf("%d %d %d %d", this->time_duration, this->time_start, this->time_duration+this->time_start, time(NULL));
+    if((this->time_duration > 0) && (this->time_start+this->time_duration <= time(NULL)))
+    {
+      printf("server konci\n");
+      this->work = 0;
+      sll_for_each(this->players, &stop_players, NULL, NULL, NULL);
+    }
   
     if(sll_get_size(this->players)==0)
     {
@@ -294,7 +301,10 @@ void* server_logic(void*arg)
       {
         no_player_time_start = 0;
       }
-    } 
+    }
+
+    
+
  //   struct timespec ts = {SERVER_TICK/1000, (SERVER_TICK%1000)*1000000};
  //   nanosleep(SERVER_TICK);
     poll(fds,0,SERVER_TICK);
@@ -383,7 +393,7 @@ void server_ack_player_next_action(void * data, void * in, void * out, void * er
     case P_GAME_END:
       *index = *index+1;
       pthread_mutex_unlock(&player->mut_action);
-    return ;
+      return ;
     break;
     case P_GAME_PAUSE:
       if(player->next_action != P_GAME_PAUSE){
@@ -496,7 +506,7 @@ void player_move(struct player* this, struct coord direction, map* map, int * fr
 
 void player_dont_move(player * this, map * map)
 {
-  printf("p dont move\n");
+  //printf("p dont move\n");
   sll_node* node = this->body->head_;
   map->map[((struct coord*)(node->data_))->y][((struct coord*)(node->data_))->x] = (struct map_cell){this->action,this->colour};
   node = node->next_;
@@ -569,6 +579,15 @@ void remove_player_from_players(void * data, void * in, void * out, void * err)
   //printf("removing player at %d\n", index);
   sll * players = in;
   sll_remove(players, index);
+}
+
+void stop_players(void * data, void * in, void * out, void * err)
+{
+  player * p = *(player **) data;
+  p->action = P_GAME_END;
+  p->work = 0;
+  my_send(p->fd, "e-end");
+  //destroy player joinduje thread
 }
 
 void server_destroy(struct server * this)

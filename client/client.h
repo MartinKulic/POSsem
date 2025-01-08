@@ -7,7 +7,7 @@
 #include "../share/run_param.h"
 
 typedef struct communication_data {
-  atomic_bool work; 
+  atomic_int work; 
   struct pollfd fds[2];
   int client_fd;
   //int uniqe_identifier;

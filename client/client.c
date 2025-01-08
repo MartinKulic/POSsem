@@ -95,7 +95,7 @@ void * communication_task(void * arg)
 
   send(this->client_fd, "u", 1, 0);
   
-  while(this->work)
+  while(this->work == 1)
   {
    // printf("enter command: ");
     if (poll(this->fds,2,900)>0)
@@ -108,7 +108,7 @@ void * communication_task(void * arg)
       {
         com_in_task(this);
       }// prislo nieco zo servera
-
+      
     }// je 0 fd je ready 
   }
   tcsetattr(0, TCSANOW, &oldt);
@@ -125,6 +125,10 @@ void com_in_task(struct communication_data* data)
   switch(msg[0]){
     case T_MAP:
       printf("%s\n", &msg[1]);
+    break;
+    case 'e':
+      data->work = 2;
+      printf("end %s %d\n", msg, data->work);
     break;
   }
 
@@ -183,8 +187,11 @@ void com_out_task(struct communication_data* data)
 void client_destroy(communication_data * this)
 {
   if(this->client_fd > 0)
-  { 
-    send(this->client_fd, "q", 1, 0);
+  {
+    if (this->work !=2)
+    {
+      send(this->client_fd, "q", 1, 0);
+    }
     close(this->client_fd);
   }
   free(this);
@@ -221,6 +228,7 @@ void client_dispache(run_param * rp)
   if (connect_to_server(&this->client_fd, rp) != 1)
   {
     printf("\033[1;5;30;41mNepodarilo sa pripojit na server!\033[0m\n\033[3;37mUisti sa, ze adresa a port su spravne.\033[0m\n");
+    this->client_fd = -1;
     client_destroy(this);
     return ;
   }
