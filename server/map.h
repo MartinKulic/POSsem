@@ -9,13 +9,13 @@
 
 #define SNAKE_BODY_CH 'H' //178
 
-#define FRUIT_1_C "\033[1;97;103m"
+#define FRUIT_1_C "\033[5;38;2;255;130;0;48;2;255;233;0m"
 #define FRUIT_CH 'O'
 
 #define FRUIT_1_CELL (struct map_cell){FRUIT_CH, FRUIT_1_C}
 
 
-#define BLOCK_C "\033[1;107;107m"
+#define BLOCK_C "\033[38;5;240;48;5;243m"
 #define BLOCK_CH 'D' //219
 #define BLOCK_CELL (struct map_cell){BLOCK_CH, BLOCK_C}
 
@@ -24,7 +24,7 @@
 
 // min mapa 9x9
 #define MIN_MAP 9
-#define MAX_MAP 800
+#define MAX_MAP 10000
 
 typedef struct coord{
   int x;

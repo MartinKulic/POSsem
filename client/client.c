@@ -128,7 +128,6 @@ void com_in_task(struct communication_data* data)
     break;
     case 'e':
       data->work = 2;
-      printf("end %s %d\n", msg, data->work);
     break;
   }
 
@@ -168,14 +167,14 @@ void com_out_task(struct communication_data* data)
               toSend[0]='<';
               break;
           }// 3. char
-          printf("%c\n", toSend[0]);
+         // printf("%c\n", toSend[0]);
           send(data->client_fd, toSend, 1, 0);
         }// je 3. char
       }// 2. char je [
     }// je 2. char
     else// nie je 2. char
     {
-      printf("esc\n");
+      //printf("esc\n");
       send(data->client_fd, "p", 1, 0);
       data->work = 0;
     }
