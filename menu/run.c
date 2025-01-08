@@ -181,7 +181,6 @@ void do_client_stuff(run_param * rp)
     }
     else
     {
-      printf("Game ended\n");
       not_ended = 0;
     }
   }
