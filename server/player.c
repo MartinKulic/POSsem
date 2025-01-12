@@ -25,14 +25,15 @@ void player_in_task(struct player * this)
         recv(this->fd, &n_a, 1, 0);
         pthread_mutex_lock(&this->mut_action);
         this->next_action = *n_a == 0 ? P_GAME_QUIT : *n_a; // ak primeme 0 najskor doslo k chybe
-        pthread_mutex_unlock(&this->mut_action);
 
         //printf("player %d recieved %c\n", this->id, this->next_action);
         if(this->next_action == P_GAME_QUIT)
         {
+          pthread_mutex_unlock(&this->mut_action);
           this->work = 0;
           break;
         }
+        pthread_mutex_unlock(&this->mut_action);
   //      my_send(this->fd, "OK");
       }
     }
@@ -80,6 +81,8 @@ void server_ack_player_next_action(void * data, void * in, void * out, void * er
   {
     case P_GAME_END:
       *index = *index+1;
+     // player->next_action = P_GAME_QUIT;
+     // my_send(player->fd, "e-end");
       pthread_mutex_unlock(&player->mut_action);
       return ;
     break;
@@ -285,7 +288,7 @@ void serialize_players(sll * players, int serv_time, char ** destination)
     while(node != NULL)
     {
       player * p = *(player**)node->data_;
-      pomLen = sprintf(&dest[index], "┃%sH:>\033[0m  %d\n%s", p->colour, p->scor,t2);
+      pomLen = sprintf(&dest[index], "┃%sH:>\033[0m  %d%s\n%s", p->colour, p->scor,p->action==P_GAME_END ? "  \033[1;91mX\033[0m" : " ", t2);
       index += pomLen;
       node = node->next_;
     }

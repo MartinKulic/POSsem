@@ -109,7 +109,14 @@ void * server_connect_players(void * arg)
           //printf("failed to make new socket\n");
           continue;
         }
-        if(sll_get_size(this->players) > this->MAX_PLAYERS)
+
+        pthread_mutex_lock(this->mut_players);
+        int numOfPlayers = sll_get_size(this->players); 
+        pthread_mutex_unlock(this->mut_players);
+
+        new_player->id = numOfPlayers; // len aby sa numOfPlayers dostalo do player init a dispache 
+
+        if(numOfPlayers > (this->MAX_PLAYERS-1))
         {
           //printf("novy hrac ale je plno\n");
           char * msg = "Plno";
@@ -161,6 +168,8 @@ void * player_init_a_dispache(void * arg)
   struct player* player = sp->player;
 
   free(sp);
+
+  int numOfPlayers = player->id;
   
   pthread_mutex_init(&player->mut_action, NULL);
   player->id = player->fd;
@@ -179,7 +188,7 @@ void * player_init_a_dispache(void * arg)
 
   sll_add(player->body, &newPos);
 
-  int col = rand()%4;
+  int col = numOfPlayers%4;
   switch (col) {
     case 0:
       player->colour = RED_P_C;

@@ -184,6 +184,7 @@ void do_client_stuff(run_param * rp)
     else
     {
       not_ended = 0;
+      printf("\033[1;33mHra skoncila\033[0m\n");
     }
   }
   client_destroy(this);
