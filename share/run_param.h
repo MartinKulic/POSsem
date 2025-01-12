@@ -1,7 +1,7 @@
 //run_param.h
 #pragma once
 
-#define IP_BUFF_SIZE 15
+#define IP_BUFF_SIZE 16
 #define PORT_BUFF_SIZE 6
 #define INT32_BUFF_SIZE 11
 #define PATH_T_MAP_BUFF_SIZE 500
