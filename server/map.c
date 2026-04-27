@@ -244,7 +244,7 @@ size_t serialize_map(map* this, char** target)
     {
       reallocate_field(&map_flatened, &alocated_size, this->dim.x);
     }
-  sprintf(&map_flatened[index],&temp[0]);
+  sprintf(&map_flatened[index], "%s", temp);
   index += len_of_temp;
   len_of_temp = sprintf(&temp[0], "━");
   for(size_t i = 0; i < this->dim.x; i++)
